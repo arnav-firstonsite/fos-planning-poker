@@ -3,6 +3,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import { submitVote } from "./actions/vote";
 
 type Vote = "0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "coffee";
 
@@ -51,6 +52,7 @@ export default function Home() {
   const [isRevealed, setIsRevealed] = useState(
     mockSession.currentStory.status === "revealed"
   );
+  const voteOptions: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
 
   const sortedParticipants = useMemo(() => {
     const voteValue = (vote: Vote | null) => {
@@ -127,9 +129,26 @@ export default function Home() {
             <span>Planning Poker</span>
           </h1> */}
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between px-6 py-4 text-sm font-semibold text-[hsl(var(--highlight))]">
-              <span>Dev Avg: {isRevealed ? devAverage : "—"}</span>
-              <span>QA Avg: {isRevealed ? qaAverage : "—"}</span>
+            <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
+              {voteOptions.map((vote) => (
+                <form
+                  key={vote}
+                  action={submitVote}
+                  className="flex"
+                >
+                  <input type="hidden" name="vote" value={vote} />
+                  <button
+                    type="submit"
+                    className="rounded-md border border-[hsl(var(--accent))]/30 bg-white px-3 py-2 text-sm font-semibold text-[hsl(var(--accent))] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] focus:ring-offset-2 focus:ring-offset-white"
+                  >
+                    {vote === "coffee" ? "☕️" : vote}
+                  </button>
+                </form>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 items-center justify-center gap-2 px-6 py-4 text-center text-sm font-semibold text-[hsl(var(--highlight))]">
+              <span className="w-full">Dev Avg: {isRevealed ? devAverage : "—"}</span>
+              <span className="w-full">QA Avg: {isRevealed ? qaAverage : "—"}</span>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100 text-left text-sm text-gray-700">
