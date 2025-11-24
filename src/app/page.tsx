@@ -6,6 +6,7 @@ import Image from "next/image";
 import { submitVote } from "./actions/vote";
 
 type Vote = "0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "coffee";
+const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
 
 type Participant = {
   id: string;
@@ -16,7 +17,6 @@ type Participant = {
 
 type Story = {
   status: "pending" | "revealed";
-  average: number | null;
 };
 
 type SessionData = {
@@ -30,7 +30,6 @@ const mockSession: SessionData = {
   facilitatorId: "p1",
   currentStory: {
     status: "pending",
-    average: null,
   },
   participants: [
     { id: "p1", name: "Avery", role: "facilitator", vote: null },
@@ -52,7 +51,6 @@ export default function Home() {
   const [isRevealed, setIsRevealed] = useState(
     mockSession.currentStory.status === "revealed"
   );
-  const voteOptions: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
 
   const sortedParticipants = useMemo(() => {
     const voteValue = (vote: Vote | null) => {
@@ -130,7 +128,7 @@ export default function Home() {
           </h1> */}
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
-              {voteOptions.map((vote) => (
+              {VOTE_OPTIONS.map((vote) => (
                 <form
                   key={vote}
                   action={submitVote}
@@ -139,7 +137,7 @@ export default function Home() {
                   <input type="hidden" name="vote" value={vote} />
                   <button
                     type="submit"
-                    className="rounded-md border border-[hsl(var(--accent))]/30 bg-white px-3 py-2 text-sm font-semibold text-[hsl(var(--accent))] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))] focus:ring-offset-2 focus:ring-offset-white"
+                    className="rounded-md border border-[hsl(var(--accent))]/30 bg-white px-3 py-2 text-sm font-semibold text-[hsl(var(--accent))] shadow-sm transition hover:-translate-y-0.5 hover:shadow-none hover:bg-orange hover:text-white focus:shadow-none focus:bg-orange focus:text-white "
                   >
                     {vote === "coffee" ? "☕️" : vote}
                   </button>
@@ -217,7 +215,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setIsRevealed(true)}
-                  className="rounded-md bg-foreground text-dark-blue px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white"
+                  className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white"
                 >
                   Reveal Votes
                 </button>
