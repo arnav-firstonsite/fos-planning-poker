@@ -117,7 +117,7 @@ export default function Home() {
       </header>
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-center px-6 py-16">
         <div className="flex flex-col items-center gap-6 text-center">
-          <h1 className="flex items-center gap-3 text-3xl font-semibold leading-10 tracking-tight text-dark-blue">
+          {/* <h1 className="flex items-center gap-3 text-3xl font-semibold leading-10 tracking-tight text-dark-blue">
             <Image
               src="/logo.svg"
               alt="First Onsite logo"
@@ -125,29 +125,12 @@ export default function Home() {
               height={16}
             />
             <span>Planning Poker</span>
-          </h1>
+          </h1> */}
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-start gap-3 border-b border-gray-100 px-6 py-4">
-              <div className="flex min-w-0 flex-col gap-2">
-                <div className="inline-flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-flex min-w-[90px] justify-center rounded-full px-3 py-1 text-xs font-semibold ${
-                      isRevealed
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
-                  >
-                    {isRevealed ? "Revealed" : "Pending"}
-                  </span>
-                  {facilitator && (
-                    <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
-                      Facilitator: {facilitator.name}
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="flex items-center justify-between px-6 py-4 text-sm font-semibold text-[hsl(var(--highlight))]">
+              <span>Dev Avg: {isRevealed ? devAverage : "—"}</span>
+              <span>QA Avg: {isRevealed ? qaAverage : "—"}</span>
             </div>
-
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100 text-left text-sm text-gray-700">
                 <thead className="bg-gray-50">
@@ -210,47 +193,22 @@ export default function Home() {
               </table>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-6 py-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold text-[hsl(var(--highlight))]">
-                  Dev Avg: {isRevealed ? devAverage : "—"}
-                </span>
-                <span className="text-sm font-semibold text-[hsl(var(--highlight))]">
-                  QA Avg: {isRevealed ? qaAverage : "—"}
-                </span>
-              </div>
+            <div className="flex items-center justify-center gap-3 border-t border-gray-100 px-6 py-4">
               {!isRevealed ? (
                 <button
                   type="button"
                   onClick={() => setIsRevealed(true)}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white"
+                  className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white"
                 >
                   Reveal Votes
                 </button>
               ) : (
-                <span className="rounded-md border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600">
-                  All votes revealed
+                <span className="rounded-md border-2 border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600">
+                  Votes revealed
                 </span>
               )}
             </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
         </div>
       </main>
     </div>
