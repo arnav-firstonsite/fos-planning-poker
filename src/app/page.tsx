@@ -33,7 +33,7 @@ const mockSession: SessionData = {
   },
   participants: [
     { id: "p1", name: "Avery", role: "facilitator", vote: null },
-    { id: "p2", name: "Blake", role: "dev", vote: "5" },
+    { id: "p2", name: "Blake", role: "dev", vote: "3" },
     { id: "p3", name: "Casey", role: "dev", vote: "5" },
     { id: "p4", name: "Devon", role: "dev", vote: "8" },
     { id: "p5", name: "Eden", role: "qa", vote: "3" },
@@ -193,12 +193,12 @@ export default function Home() {
               </table>
             </div>
 
-            <div className="flex items-center justify-center gap-3 border-t border-gray-100 px-6 py-4">
+            <div className="flex items-center justify-center gap-3 px-6 py-4">
               {!isRevealed ? (
                 <button
                   type="button"
                   onClick={() => setIsRevealed(true)}
-                  className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white"
+                  className="rounded-md bg-foreground text-dark-blue px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white"
                 >
                   Reveal Votes
                 </button>
