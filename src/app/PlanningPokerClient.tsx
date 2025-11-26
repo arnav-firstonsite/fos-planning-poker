@@ -1,7 +1,7 @@
 // app/PlanningPokerClient.tsx
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { submitVote } from "./actions/vote";
 import { revealVotes } from "./actions/reveal";
 import { Vote, Participant } from "./planningPokerShared";
@@ -12,6 +12,7 @@ type Props = {
   participants: Participant[];
   devAverage: string;
   qaAverage: string;
+  isRevealed: boolean;
   roomId: string;
 };
 
@@ -23,9 +24,9 @@ export function PlanningPokerClient({
   participants,
   devAverage,
   qaAverage,
+  isRevealed,
   roomId,
 }: Props) {
-  const [isRevealed, setIsRevealed] = useState(false);
   const [isRevealing, startReveal] = useTransition();
 
   return (
@@ -36,6 +37,7 @@ export function PlanningPokerClient({
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-center px-6 py-16">
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
+            {/* Vote buttons */}
             <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
               {VOTE_OPTIONS.map((vote) => (
                 <form key={vote} action={submitVote} className="flex">
@@ -51,11 +53,13 @@ export function PlanningPokerClient({
               ))}
             </div>
 
+            {/* Averages */}
             <div className="grid grid-cols-2 items-center justify-center gap-2 px-6 py-4 text-center text-sm font-semibold text-[hsl(var(--highlight))]">
               <span className="w-full">Dev Avg: {isRevealed ? devAverage : "—"}</span>
               <span className="w-full">QA Avg: {isRevealed ? qaAverage : "—"}</span>
             </div>
 
+            {/* Participant table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100 text-left text-sm text-gray-700">
                 <thead className="bg-gray-50">
@@ -72,6 +76,7 @@ export function PlanningPokerClient({
                       : participant.vote
                       ? "✓"
                       : "—";
+
                     const roleLabel =
                       participant.role === "qa"
                         ? "QA"
@@ -107,12 +112,12 @@ export function PlanningPokerClient({
               </table>
             </div>
 
+            {/* Reveal button */}
             <div className="flex items-center justify-center gap-3 px-6 py-4">
               {!isRevealed ? (
                 <form
                   action={(formData) =>
                     startReveal(async () => {
-                      setIsRevealed(true)
                       await revealVotes(formData);
                     })
                   }

@@ -1,3 +1,5 @@
+// app/planningPokerShared.ts
+
 export type Vote = "0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "coffee";
 
 export type Participant = {
@@ -11,6 +13,45 @@ export type SessionData = {
   participants: Participant[];
   storyStatus: "pending" | "revealed";
 };
+
+// In-memory store keyed by roomId (NOT production-safe, but great for learning)
+const sessions = new Map<string, SessionData>();
+
+// Seed a default room for now
+const defaultRoomId = "000";
+if (!sessions.has(defaultRoomId)) {
+  sessions.set(defaultRoomId, {
+    storyStatus: "pending",
+    participants: [
+      { id: "p1", name: "Avery", role: "dev", vote: "5" },
+      { id: "p2", name: "Blake", role: "dev", vote: "3" },
+      { id: "p3", name: "Casey", role: "dev", vote: "5" },
+      { id: "p4", name: "Devon", role: "dev", vote: "8" },
+      { id: "p5", name: "Eden", role: "qa", vote: "3" },
+      { id: "p6", name: "Finley", role: "qa", vote: "?" },
+      { id: "p7", name: "Gray", role: "qa", vote: "5" },
+      { id: "p8", name: "Harper", role: "dev", vote: null },
+    ],
+  });
+}
+
+export function getSession(roomId: string): SessionData {
+  const existing = sessions.get(roomId);
+  if (!existing) {
+    // For unknown rooms, just create a blank one
+    const blank: SessionData = { storyStatus: "pending", participants: [] };
+    sessions.set(roomId, blank);
+    return blank;
+  }
+  return existing;
+}
+
+export function updateSession(roomId: string, update: (session: SessionData) => SessionData) {
+  const current = getSession(roomId);
+  const next = update(current);
+  sessions.set(roomId, next);
+  return next;
+}
 
 export function voteValue(vote: Vote | null) {
   if (vote === null) return -1;
