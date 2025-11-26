@@ -2,7 +2,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState, useTransition } from "react";
-import { submitVote } from "./actions/vote";
+import { useRouter } from "next/navigation";
+import { submitVote, upsertParticipant } from "./actions/vote";
 import { revealVotes } from "./actions/reveal";
 import { resetVotes } from "./actions/reset";
 import { Vote, Participant } from "./planningPokerShared";
@@ -28,12 +29,26 @@ export function PlanningPokerClient({
   isRevealed,
   roomId,
 }: Props) {
+  const router = useRouter();
+
+  const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
   const [showProfileModal, setShowProfileModal] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Ensure we have a stable userId
+    let storedId = window.localStorage.getItem("planningPokerUserId");
+    if (!storedId) {
+      storedId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      window.localStorage.setItem("planningPokerUserId", storedId);
+    }
+    setUserId(storedId);
 
     const storedName = window.localStorage.getItem("planningPokerUserName") ?? "";
     const storedRole = window.localStorage.getItem("planningPokerUserRole");
@@ -46,17 +61,30 @@ export function PlanningPokerClient({
 
   const hasUserProfile = !!userName && (userRole === "dev" || userRole === "qa");
 
-  const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!userName.trim() || !(userRole === "dev" || userRole === "qa")) {
+    const trimmedName = userName.trim();
+    if (!trimmedName || !(userRole === "dev" || userRole === "qa")) {
+      return;
+    }
+
+    if (!userId) {
+      // Should not normally happen because we initialize userId in useEffect,
+      // but guard just in case.
       return;
     }
 
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("planningPokerUserName", userName.trim());
+      window.localStorage.setItem("planningPokerUserName", trimmedName);
       window.localStorage.setItem("planningPokerUserRole", userRole);
     }
+
+    // Insert or update this user in the global room data on the server
+    await upsertParticipant(roomId, userId, trimmedName, userRole);
+
+    // Refresh the data so the table reflects the updated participants
+    router.refresh();
 
     // User explicitly confirms → close modal
     setShowProfileModal(false);
@@ -78,6 +106,7 @@ export function PlanningPokerClient({
                 <form key={vote} action={submitVote} className="flex">
                   <input type="hidden" name="vote" value={vote} />
                   <input type="hidden" name="roomId" value={roomId} />
+                  <input type="hidden" name="userId" value={userId} />
                   <button
                     type="submit"
                     className="rounded-md border border-[hsl(var(--accent))]/30 bg-white px-3 py-2 text-sm font-semibold text-[hsl(var(--accent))] shadow-sm transition hover:-translate-y-0.5 hover:shadow-none hover:bg-orange hover:text-white focus:shadow-none focus:bg-orange focus:text-white "
@@ -191,7 +220,7 @@ export function PlanningPokerClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              Tell us who you are
+              Please tell us who you are
             </h2>
             <p className="mb-4 text-sm text-gray-600">
               Please enter your name and role so we can attach your votes.

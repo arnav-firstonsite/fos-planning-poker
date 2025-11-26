@@ -9,7 +9,7 @@ import { updateSession } from "../planningPokerShared";
 // Posted by Bergi, modified by community. See post 'Timeline' for change history
 // Retrieved 2025-11-26, License - CC BY-SA 4.0
 
-function timeout(ms) {
+function timeout(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 //------------------------------------------------------
