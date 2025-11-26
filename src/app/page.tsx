@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Image from "next/image";
+// import Image from "next/image";
 import { submitVote } from "./actions/vote";
 import { revealVotes } from "./actions/reveal";
 
@@ -25,7 +25,7 @@ type SessionData = {
 const mockSession: SessionData = {
   storyStatus: "pending",
   participants: [
-    { id: "p1", name: "Avery", role: "dev", vote: null },
+    { id: "p1", name: "Avery", role: "dev", vote: '5' },
     { id: "p2", name: "Blake", role: "dev", vote: "3" },
     { id: "p3", name: "Casey", role: "dev", vote: "5" },
     { id: "p4", name: "Devon", role: "dev", vote: "8" },
@@ -41,10 +41,8 @@ function capitalizeFirstLetter(str: string): string {
 }
 
 export default function Home() {
-  const [isRevealed, setIsRevealed] = useState(
-    mockSession.storyStatus === "revealed"
-  );
-  
+  const isRevealed = mockSession.storyStatus === 'revealed';
+    
   const [isRevealing, startReveal] = useTransition();
 
   const voteValue = (vote: Vote | null) => {
@@ -196,7 +194,6 @@ export default function Home() {
                   action={(formData) =>
                     startReveal(async () => {
                       await revealVotes(formData);
-                      setIsRevealed(true);
                     })
                   }
                 >
