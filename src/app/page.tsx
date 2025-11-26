@@ -1,9 +1,10 @@
 /** @jsxImportSource react */
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { submitVote } from "./actions/vote";
+import { revealVotes } from "./actions/reveal";
 
 type Vote = "0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "coffee";
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
@@ -11,7 +12,7 @@ const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"]
 type Participant = {
   id: string;
   name: string;
-  role: "dev" | "qa" | "facilitator";
+  role: "dev" | "qa";
   vote: Vote | null;
 };
 
@@ -20,19 +21,17 @@ type Story = {
 };
 
 type SessionData = {
-  facilitatorId: string;
   participants: Participant[];
   currentStory: Story;
 };
 
 // Example mock payload for the Planning Poker UI to consume.
 const mockSession: SessionData = {
-  facilitatorId: "p1",
   currentStory: {
     status: "pending",
   },
   participants: [
-    { id: "p1", name: "Avery", role: "facilitator", vote: null },
+    { id: "p1", name: "Avery", role: "dev", vote: null },
     { id: "p2", name: "Blake", role: "dev", vote: "3" },
     { id: "p3", name: "Casey", role: "dev", vote: "5" },
     { id: "p4", name: "Devon", role: "dev", vote: "8" },
@@ -51,6 +50,8 @@ export default function Home() {
   const [isRevealed, setIsRevealed] = useState(
     mockSession.currentStory.status === "revealed"
   );
+  
+  const [isRevealing, startReveal] = useTransition();
 
   const sortedParticipants = useMemo(() => {
     const voteValue = (vote: Vote | null) => {
@@ -66,7 +67,6 @@ export default function Home() {
     };
 
     return mockSession.participants
-      .filter((p) => p.id !== mockSession.facilitatorId)
       .slice()
       .sort((a, b) => {
         const roleDiff = rolePriority(a) - rolePriority(b);
@@ -101,14 +101,6 @@ export default function Home() {
       qaAverage: averageForRole("qa"),
     };
   }, []);
-
-  const facilitator = useMemo(
-    () =>
-      mockSession.participants.find(
-        (p) => p.id === mockSession.facilitatorId
-      ) ?? null,
-    []
-  );
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-center bg-light-grey font-sans ">
@@ -212,13 +204,23 @@ export default function Home() {
 
             <div className="flex items-center justify-center gap-3 px-6 py-4">
               {!isRevealed ? (
-                <button
-                  type="button"
-                  onClick={() => setIsRevealed(true)}
-                  className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white"
+                <form
+                  action={(formData) =>
+                    startReveal(async () => {
+                      await revealVotes(formData);
+                      setIsRevealed(true);
+                    })
+                  }
                 >
-                  Reveal Votes
-                </button>
+                  <input type="hidden" name="roomId" value="FO-1234" />
+                  <button
+                    type="submit"
+                    disabled={isRevealing}
+                    className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isRevealing ? "Revealing..." : "Reveal Votes"}
+                  </button>
+                </form>
               ) : (
                 <span className="rounded-md border-2 border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600">
                   Votes revealed
