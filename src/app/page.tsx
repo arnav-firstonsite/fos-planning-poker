@@ -16,20 +16,14 @@ type Participant = {
   vote: Vote | null;
 };
 
-type Story = {
-  status: "pending" | "revealed";
-};
-
 type SessionData = {
   participants: Participant[];
-  currentStory: Story;
+  storyStatus: "pending" | "revealed";
 };
 
 // Example mock payload for the Planning Poker UI to consume.
 const mockSession: SessionData = {
-  currentStory: {
-    status: "pending",
-  },
+  storyStatus: "pending",
   participants: [
     { id: "p1", name: "Avery", role: "dev", vote: null },
     { id: "p2", name: "Blake", role: "dev", vote: "3" },
@@ -48,7 +42,7 @@ function capitalizeFirstLetter(str: string): string {
 
 export default function Home() {
   const [isRevealed, setIsRevealed] = useState(
-    mockSession.currentStory.status === "revealed"
+    mockSession.storyStatus === "revealed"
   );
   
   const [isRevealing, startReveal] = useTransition();
