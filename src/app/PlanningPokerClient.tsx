@@ -4,22 +4,14 @@
 import { useState, useTransition } from "react";
 import { submitVote } from "./actions/vote";
 import { revealVotes } from "./actions/reveal";
+import { Vote, Participant } from "./planningPokerShared";
 
-type Vote = "0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "coffee";
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
-
-type Participant = {
-  id: string;
-  name: string;
-  role: "dev" | "qa";
-  vote: Vote | null;
-};
 
 type Props = {
   participants: Participant[];
   devAverage: string;
   qaAverage: string;
-//   isRevealed: boolean;
   roomId: string;
 };
 
@@ -31,7 +23,6 @@ export function PlanningPokerClient({
   participants,
   devAverage,
   qaAverage,
-//   isRevealed,
   roomId,
 }: Props) {
   const [isRevealed, setIsRevealed] = useState(false);
