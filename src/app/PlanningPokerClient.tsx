@@ -4,6 +4,7 @@
 import { useTransition } from "react";
 import { submitVote } from "./actions/vote";
 import { revealVotes } from "./actions/reveal";
+import { resetVotes } from "./actions/reset";
 import { Vote, Participant } from "./planningPokerShared";
 
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
@@ -27,7 +28,7 @@ export function PlanningPokerClient({
   isRevealed,
   roomId,
 }: Props) {
-  const [isRevealing, startReveal] = useTransition();
+  const [isWorking, startWork] = useTransition();
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-center bg-light-grey font-sans ">
@@ -112,12 +113,12 @@ export function PlanningPokerClient({
               </table>
             </div>
 
-            {/* Reveal button */}
+            {/* Reveal / Reset buttons */}
             <div className="flex items-center justify-center gap-3 px-6 py-4">
               {!isRevealed ? (
                 <form
                   action={(formData) =>
-                    startReveal(async () => {
+                    startWork(async () => {
                       await revealVotes(formData);
                     })
                   }
@@ -125,16 +126,27 @@ export function PlanningPokerClient({
                   <input type="hidden" name="roomId" value={roomId} />
                   <button
                     type="submit"
-                    disabled={isRevealing}
-                    className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-70"
+                    disabled={isWorking}
+                    className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {isRevealing ? "Revealing..." : "Reveal Votes"}
+                    {isWorking ? "Working..." : "Reveal Votes"}
                   </button>
                 </form>
               ) : (
-                <span className="rounded-md border-2 border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600">
-                  Votes revealed
-                </span>
+                <form action={(formData) =>
+                    startWork(async () => {
+                      await resetVotes(formData);
+                    })
+                  }>
+                  <input type="hidden" name="roomId" value={roomId} />
+                  <button
+                    type="submit"
+                    disabled={isWorking}
+                    className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isWorking ? "Working..." : "Reset"}
+                  </button>
+                </form>
               )}
             </div>
           </div>
