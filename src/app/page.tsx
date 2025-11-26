@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import { submitVote } from "./actions/vote";
 import { revealVotes } from "./actions/reveal";
@@ -47,54 +47,48 @@ export default function Home() {
   
   const [isRevealing, startReveal] = useTransition();
 
-  const sortedParticipants = useMemo(() => {
-    const voteValue = (vote: Vote | null) => {
-      if (vote === null) return -1;
-      const numeric = Number(vote);
-      return Number.isNaN(numeric) ? -1 : numeric;
-    };
+  const voteValue = (vote: Vote | null) => {
+    if (vote === null) return -1;
+    const numeric = Number(vote);
+    return Number.isNaN(numeric) ? -1 : numeric;
+  };
 
-    const rolePriority = (p: Participant) => {
-      if (p.role === "dev") return 0;
-      if (p.role === "qa") return 1;
-      return 2;
-    };
+  const rolePriority = (p: Participant) => {
+    if (p.role === "dev") return 0;
+    if (p.role === "qa") return 1;
+    return 2;
+  };
 
-    return mockSession.participants
-      .slice()
-      .sort((a, b) => {
-        const roleDiff = rolePriority(a) - rolePriority(b);
-        if (roleDiff !== 0) return roleDiff;
+  const sortedParticipants = mockSession.participants
+    .slice()
+    .sort((a, b) => {
+      const roleDiff = rolePriority(a) - rolePriority(b);
+      if (roleDiff !== 0) return roleDiff;
 
-        const voteDiff = voteValue(b.vote) - voteValue(a.vote);
-        if (voteDiff !== 0) return voteDiff;
+      const voteDiff = voteValue(b.vote) - voteValue(a.vote);
+      if (voteDiff !== 0) return voteDiff;
 
-        return a.name.localeCompare(b.name);
-      });
-  }, []);
+      return a.name.localeCompare(b.name);
+    });
 
-  const { devAverage, qaAverage } = useMemo(() => {
-    const averageForRole = (role: Participant["role"]) => {
-      const votes = mockSession.participants
-        .filter((p) => p.role === role)
-        .map((p) => p.vote)
-        .filter((vote): vote is Exclude<Vote, "?" | "coffee"> => {
-          if (vote === null) return false;
-          return vote !== "?" && vote !== "coffee";
-        })
-        .map((vote) => Number(vote))
-        .filter((v) => !Number.isNaN(v));
+  const averageForRole = (role: Participant["role"]) => {
+    const votes = mockSession.participants
+      .filter((p) => p.role === role)
+      .map((p) => p.vote)
+      .filter((vote): vote is Exclude<Vote, "?" | "coffee"> => {
+        if (vote === null) return false;
+        return vote !== "?" && vote !== "coffee";
+      })
+      .map((vote) => Number(vote))
+      .filter((v) => !Number.isNaN(v));
 
-      if (!votes.length) return "—";
-      const avg = votes.reduce((sum, v) => sum + v, 0) / votes.length;
-      return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1);
-    };
+    if (!votes.length) return "—";
+    const avg = votes.reduce((sum, v) => sum + v, 0) / votes.length;
+    return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1);
+  };
 
-    return {
-      devAverage: averageForRole("dev"),
-      qaAverage: averageForRole("qa"),
-    };
-  }, []);
+  const devAverage = averageForRole("dev");
+  const qaAverage = averageForRole("qa");
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-center bg-light-grey font-sans ">
