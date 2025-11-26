@@ -1,7 +1,7 @@
 // app/PlanningPokerClient.tsx
 "use client";
 
-import { useTransition } from "react";
+import { FormEvent, useEffect, useState, useTransition } from "react";
 import { submitVote } from "./actions/vote";
 import { revealVotes } from "./actions/reveal";
 import { resetVotes } from "./actions/reset";
@@ -28,6 +28,40 @@ export function PlanningPokerClient({
   isRevealed,
   roomId,
 }: Props) {
+  const [userName, setUserName] = useState<string>("");
+  const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
+  const [showProfileModal, setShowProfileModal] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedName = window.localStorage.getItem("planningPokerUserName") ?? "";
+    const storedRole = window.localStorage.getItem("planningPokerUserRole");
+
+    if (storedName) setUserName(storedName);
+    if (storedRole === "dev" || storedRole === "qa") setUserRole(storedRole);
+
+    // NOTE: Do NOT close modal automatically
+  }, []);
+
+  const hasUserProfile = !!userName && (userRole === "dev" || userRole === "qa");
+
+  const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!userName.trim() || !(userRole === "dev" || userRole === "qa")) {
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("planningPokerUserName", userName.trim());
+      window.localStorage.setItem("planningPokerUserRole", userRole);
+    }
+
+    // User explicitly confirms → close modal
+    setShowProfileModal(false);
+  };
+
   const [isWorking, startWork] = useTransition();
 
   return (
@@ -151,7 +185,72 @@ export function PlanningPokerClient({
             </div>
           </div>
         </div>
-      </main>
+    </main>
+
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              Tell us who you are
+            </h2>
+            <p className="mb-4 text-sm text-gray-600">
+              Please enter your name and role so we can attach your votes.
+            </p>
+            <form onSubmit={handleProfileSubmit} className="space-y-4">
+              <div className="text-left">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Your name"
+                  required
+                />
+              </div>
+              <div className="text-left">
+                <span className="mb-1 block text-sm font-medium text-gray-700">
+                  Role
+                </span>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-1 text-sm text-gray-700">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="dev"
+                      checked={userRole === "dev"}
+                      onChange={() => setUserRole("dev")}
+                      className="h-4 w-4"
+                    />
+                    Dev
+                  </label>
+                  <label className="flex items-center gap-1 text-sm text-gray-700">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="qa"
+                      checked={userRole === "qa"}
+                      onChange={() => setUserRole("qa")}
+                      className="h-4 w-4"
+                    />
+                    QA
+                  </label>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-dark-blue focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
