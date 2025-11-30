@@ -1,7 +1,13 @@
+// app/actions/vote.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getSession, updateSession, Participant, Vote } from "../planningPokerShared";
+import {
+  getSession,
+  updateSession,
+  Participant,
+  Vote,
+} from "../planningPokerShared";
 import { broadcastToRoom } from "../../server/wsServer";
 
 export async function submitVote(formData: FormData) {
@@ -28,7 +34,7 @@ export async function submitVote(formData: FormData) {
 
   const vote = voteStr as Vote;
 
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  // Removed artificial delay here
 
   updateSession(roomId, (session) => {
     const hasParticipant = session.participants.some((p) => p.id === userId);
@@ -44,7 +50,7 @@ export async function submitVote(formData: FormData) {
 
   const session = getSession(roomId);
 
-  // 🔴 NEW: broadcast updated session to all connected clients for this room
+  // Broadcast updated session to all connected clients for this room
   broadcastToRoom(roomId, {
     type: "session",
     roomId,
@@ -100,7 +106,7 @@ export async function upsertParticipant(
 
   const session = getSession(trimmedRoomId);
 
-  // 🔴 NEW: broadcast updated session to all clients
+  // Broadcast updated session to all clients
   broadcastToRoom(trimmedRoomId, {
     type: "session",
     roomId: trimmedRoomId,

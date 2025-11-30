@@ -76,6 +76,23 @@ export function PlanningPokerClient({
 
   // Live session from websockets (overrides initial props when present)
   const [liveSession, setLiveSession] = useState<SessionData | null>(null);
+  const [selectedVote, setSelectedVote] = useState<Vote | null>(null);
+  // Keep selectedVote in sync with the current user's vote in the session
+  useEffect(() => {
+    const sourceSession: SessionData =
+      liveSession ?? {
+        participants,
+        storyStatus: isRevealed ? "revealed" : "pending",
+      };
+
+    if (!userId) {
+      setSelectedVote(null);
+      return;
+    }
+
+    const me = sourceSession.participants.find((p) => p.id === userId);
+    setSelectedVote(me?.vote ?? null);
+  }, [liveSession, participants, userId, isRevealed]);
 
   const [isWorking, startWork] = useTransition();
 
@@ -225,20 +242,29 @@ export function PlanningPokerClient({
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
             {/* Vote buttons */}
             <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
-              {VOTE_OPTIONS.map((vote) => (
-                <form key={vote} action={submitVote} className="flex">
-                  <input type="hidden" name="vote" value={vote} />
-                  <input type="hidden" name="roomId" value={roomId} />
-                  <input type="hidden" name="userId" value={userId} />
-                  <button
-                    type="submit"
-                    disabled={!hasUserProfile}
-                    className="rounded-md border border-[hsl(var(--accent))]/30 bg-white px-3 py-2 text-sm font-semibold text-[hsl(var(--accent))] shadow-sm transition hover:-translate-y-0.5 hover:shadow-none hover:bg-orange hover:text-white focus:shadow-none focus:bg-orange focus:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {vote === "coffee" ? "☕️" : vote}
-                  </button>
-                </form>
-              ))}
+              {VOTE_OPTIONS.map((vote) => {
+                const isSelected = selectedVote === vote;
+
+                return (
+                  <form key={vote} action={submitVote} className="flex">
+                    <input type="hidden" name="vote" value={vote} />
+                    <input type="hidden" name="roomId" value={roomId} />
+                    <input type="hidden" name="userId" value={userId} />
+                    <button
+                      type="submit"
+                      disabled={!hasUserProfile}
+                      onClick={() => setSelectedVote(vote)}
+                      className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-none focus:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                        isSelected
+                          ? "bg-orange text-white"
+                          : "bg-white text-[hsl(var(--accent))] hover:bg-orange hover:text-white focus:bg-orange focus:text-white"
+                      }`}
+                    >
+                      {vote === "coffee" ? "☕️" : vote}
+                    </button>
+                  </form>
+                );
+              })}
             </div>
 
             {/* Averages */}
@@ -279,17 +305,27 @@ export function PlanningPokerClient({
                       participant.role === "qa"
                         ? "QA"
                         : capitalizeFirstLetter(participant.role);
-                    const rowTone =
+
+                    // Begin replacement block for row background and name cell
+                    const isCurrentUser = participant.id === userId;
+
+                    const baseRowTone =
                       participant.role === "dev"
-                        ? "bg-blue-50/80"
+                        ? isCurrentUser
+                          ? "bg-blue-100"
+                          : "bg-blue-50/80"
                         : participant.role === "qa"
-                        ? "bg-orange-50/80"
+                        ? isCurrentUser
+                          ? "bg-orange-100"
+                          : "bg-orange-50/80"
+                        : isCurrentUser
+                        ? "bg-gray-100"
                         : "bg-gray-50";
 
                     return (
                       <tr
                         key={participant.id}
-                        className={`${rowTone} hover:brightness-95`}
+                        className={`${baseRowTone} hover:brightness-95`}
                       >
                         <td className="px-6 py-3 font-medium text-gray-900">
                           {participant.name}
