@@ -34,7 +34,12 @@ export function PlanningPokerClient({
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
-  const [showProfileModal, setShowProfileModal] = useState(true);
+
+  // Track whether we've checked localStorage yet
+  const [profileChecked, setProfileChecked] = useState(false);
+
+  // Start with modal hidden; we'll decide after reading localStorage
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -53,13 +58,20 @@ export function PlanningPokerClient({
     const storedName = window.localStorage.getItem("planningPokerUserName") ?? "";
     const storedRole = window.localStorage.getItem("planningPokerUserRole");
 
+    const hasStoredProfile =
+      !!storedName && (storedRole === "dev" || storedRole === "qa");
+
     if (storedName) setUserName(storedName);
     if (storedRole === "dev" || storedRole === "qa") setUserRole(storedRole);
 
-    // NOTE: Do NOT close modal automatically
+    // Decide whether to show the modal AFTER we've read from localStorage
+    setShowProfileModal(!hasStoredProfile);
+    setProfileChecked(true);
   }, []);
 
-  const hasUserProfile = !!userName && (userRole === "dev" || userRole === "qa");
+  // Requires userId + name + valid role
+  const hasUserProfile =
+    !!userId && !!userName && (userRole === "dev" || userRole === "qa");
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -94,8 +106,15 @@ export function PlanningPokerClient({
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-center bg-light-grey font-sans ">
-      <header className="flex flex-col justify-center h-12 bg-orange w-full text-dark-blue text-center">
-        First Onsite Planning Poker
+      <header className="flex items-center justify-between h-12 bg-orange w-full px-4 text-dark-blue">
+        <div className="font-semibold">First Onsite Planning Poker</div>
+        <button
+          type="button"
+          onClick={() => setShowProfileModal(true)}
+          className="rounded-md  bg-dark-blue px-3 py-1 text-xs text-white shadow-sm transition hover:bg-white hover:text-dark-blue hover:shadow-none "
+        >
+          Settings
+        </button>
       </header>
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-center px-6 py-16">
         <div className="flex flex-col items-center gap-6 text-center">
@@ -109,7 +128,8 @@ export function PlanningPokerClient({
                   <input type="hidden" name="userId" value={userId} />
                   <button
                     type="submit"
-                    className="rounded-md border border-[hsl(var(--accent))]/30 bg-white px-3 py-2 text-sm font-semibold text-[hsl(var(--accent))] shadow-sm transition hover:-translate-y-0.5 hover:shadow-none hover:bg-orange hover:text-white focus:shadow-none focus:bg-orange focus:text-white "
+                    disabled={!hasUserProfile}
+                    className="rounded-md border border-[hsl(var(--accent))]/30 bg-white px-3 py-2 text-sm font-semibold text-[hsl(var(--accent))] shadow-sm transition hover:-translate-y-0.5 hover:shadow-none hover:bg-orange hover:text-white focus:shadow-none focus:bg-orange focus:text-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {vote === "coffee" ? "☕️" : vote}
                   </button>
@@ -153,7 +173,10 @@ export function PlanningPokerClient({
                         : "bg-gray-50";
 
                     return (
-                      <tr key={participant.id} className={`${rowTone} hover:brightness-95`}>
+                      <tr
+                        key={participant.id}
+                        className={`${rowTone} hover:brightness-95`}
+                      >
                         <td className="px-6 py-3 font-medium text-gray-900">
                           {participant.name}
                         </td>
@@ -196,11 +219,13 @@ export function PlanningPokerClient({
                   </button>
                 </form>
               ) : (
-                <form action={(formData) =>
+                <form
+                  action={(formData) =>
                     startWork(async () => {
                       await resetVotes(formData);
                     })
-                  }>
+                  }
+                >
                   <input type="hidden" name="roomId" value={roomId} />
                   <button
                     type="submit"
@@ -214,14 +239,13 @@ export function PlanningPokerClient({
             </div>
           </div>
         </div>
-    </main>
+      </main>
 
-      {showProfileModal && (
+      {/* Only render the modal after we've checked localStorage */}
+      {profileChecked && showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              Please tell us who you are
-            </h2>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Welcome</h2>
             <p className="mb-4 text-sm text-gray-600">
               Please enter your name and role so we can attach your votes.
             </p>
