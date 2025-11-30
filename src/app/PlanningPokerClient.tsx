@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation";
 import { submitVote, upsertParticipant } from "./actions/vote";
 import { revealVotes } from "./actions/reveal";
 import { resetVotes } from "./actions/reset";
-import { Vote, Participant } from "./planningPokerShared";
+import {
+  Vote,
+  Participant,
+  SessionData,
+  averageForRole,
+  rolePriority,
+  voteValue,
+} from "./planningPokerShared";
 
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
 
@@ -22,6 +29,33 @@ function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
 }
 
+// Sorts participants according to storyStatus:
+// - Before reveal: devs first, QA last, A–Z by name within each group.
+// - After reveal: devs first, QA last, highest vote → lowest within each group.
+function sortParticipants(
+  participants: Participant[],
+  storyStatus: SessionData["storyStatus"]
+): Participant[] {
+  const isRevealed = storyStatus === "revealed";
+
+  return participants.slice().sort((a, b) => {
+    const roleDiff = rolePriority(a) - rolePriority(b);
+    if (roleDiff !== 0) return roleDiff;
+
+    if (!isRevealed) {
+      // Pending: ignore votes for ordering, sort by name within role
+      return a.name.localeCompare(b.name);
+    }
+
+    // Revealed: sort by numeric vote (high → low) within role
+    const voteDiff = voteValue(b.vote) - voteValue(a.vote);
+    if (voteDiff !== 0) return voteDiff;
+
+    // Tie-break by name
+    return a.name.localeCompare(b.name);
+  });
+}
+
 export function PlanningPokerClient({
   participants,
   devAverage,
@@ -35,12 +69,18 @@ export function PlanningPokerClient({
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
 
-  // Track whether we've checked localStorage yet
+  // Whether we've checked localStorage for profile info
   const [profileChecked, setProfileChecked] = useState(false);
-
-  // Start with modal hidden; we'll decide after reading localStorage
+  // Controls whether the modal is visible
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  // Live session from websockets (overrides initial props when present)
+  const [liveSession, setLiveSession] = useState<SessionData | null>(null);
+
+  const [isWorking, startWork] = useTransition();
+
+  // Load userId + profile from localStorage, decide whether to show modal,
+  // and auto-join the room if we already have a valid profile.
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -55,7 +95,8 @@ export function PlanningPokerClient({
     }
     setUserId(storedId);
 
-    const storedName = window.localStorage.getItem("planningPokerUserName") ?? "";
+    const storedName =
+      window.localStorage.getItem("planningPokerUserName") ?? "";
     const storedRole = window.localStorage.getItem("planningPokerUserRole");
 
     const hasStoredProfile =
@@ -64,10 +105,82 @@ export function PlanningPokerClient({
     if (storedName) setUserName(storedName);
     if (storedRole === "dev" || storedRole === "qa") setUserRole(storedRole);
 
-    // Decide whether to show the modal AFTER we've read from localStorage
-    setShowProfileModal(!hasStoredProfile);
-    setProfileChecked(true);
-  }, []);
+    if (hasStoredProfile) {
+      // We have enough info to auto-join the room
+      (async () => {
+        try {
+          await upsertParticipant(
+            roomId,
+            storedId,
+            storedName,
+            storedRole as "dev" | "qa"
+          );
+          // Ensure server-rendered data also includes this user
+          router.refresh();
+        } catch (err) {
+          console.error("[profile] failed to auto-join room", err);
+        } finally {
+          setShowProfileModal(false);
+          setProfileChecked(true);
+        }
+      })();
+    } else {
+      // No valid stored profile → show modal
+      setShowProfileModal(true);
+      setProfileChecked(true);
+    }
+  }, [roomId, router]);
+
+  // WebSocket subscription: listen for session updates
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const ws = new WebSocket("ws://localhost:8080");
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: "join", roomId }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === "session" && msg.roomId === roomId) {
+          setLiveSession(msg.session as SessionData);
+        }
+      } catch (err) {
+        console.error("[ws] bad message", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error("[ws] error", err);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [roomId]);
+
+  // Derive what to render from either the liveSession or initial props
+  const sessionToRender: SessionData = liveSession ?? {
+    participants,
+    storyStatus: isRevealed ? "revealed" : "pending",
+  };
+
+  const participantsToRender = sortParticipants(
+    sessionToRender.participants,
+    sessionToRender.storyStatus
+  );
+  const isRevealedToRender = sessionToRender.storyStatus === "revealed";
+
+  const devAverageToRender = liveSession
+    ? averageForRole(sessionToRender, "dev")
+    : devAverage;
+
+  const qaAverageToRender = liveSession
+    ? averageForRole(sessionToRender, "qa")
+    : qaAverage;
 
   // Requires userId + name + valid role
   const hasUserProfile =
@@ -102,8 +215,6 @@ export function PlanningPokerClient({
     setShowProfileModal(false);
   };
 
-  const [isWorking, startWork] = useTransition();
-
   return (
     <div className="flex flex-col min-h-screen items-center justify-center bg-light-grey font-sans ">
       <header className="flex items-center justify-between h-12 bg-orange w-full px-4 text-dark-blue">
@@ -111,11 +222,12 @@ export function PlanningPokerClient({
         <button
           type="button"
           onClick={() => setShowProfileModal(true)}
-          className="rounded-md  bg-dark-blue px-3 py-1 text-xs text-white shadow-sm transition hover:bg-white hover:text-dark-blue hover:shadow-none "
+          className="rounded-md border border-dark-blue/40 bg-white/80 px-3 py-1 text-xs font-semibold text-dark-blue shadow-sm transition hover:bg-white hover:shadow-none focus:outline-none focus:ring-2 focus:ring-dark-blue focus:ring-offset-1"
         >
-          Settings
+          Change profile
         </button>
       </header>
+
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-center px-6 py-16">
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -139,8 +251,12 @@ export function PlanningPokerClient({
 
             {/* Averages */}
             <div className="grid grid-cols-2 items-center justify-center gap-2 px-6 py-4 text-center text-sm font-semibold text-[hsl(var(--highlight))]">
-              <span className="w-full">Dev Avg: {isRevealed ? devAverage : "—"}</span>
-              <span className="w-full">QA Avg: {isRevealed ? qaAverage : "—"}</span>
+              <span className="w-full">
+                Dev Avg: {isRevealedToRender ? devAverageToRender : "—"}
+              </span>
+              <span className="w-full">
+                QA Avg: {isRevealedToRender ? qaAverageToRender : "—"}
+              </span>
             </div>
 
             {/* Participant table */}
@@ -148,14 +264,20 @@ export function PlanningPokerClient({
               <table className="min-w-full divide-y divide-gray-100 text-left text-sm text-gray-700">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 font-semibold text-gray-800">Participant</th>
-                    <th className="px-6 py-3 font-semibold text-gray-800">Role</th>
-                    <th className="px-6 py-3 font-semibold text-gray-800">Vote</th>
+                    <th className="px-6 py-3 font-semibold text-gray-800">
+                      Participant
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-800">
+                      Role
+                    </th>
+                    <th className="px-6 py-3 font-semibold text-gray-800">
+                      Vote
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {participants.map((participant) => {
-                    const voteDisplay = isRevealed
+                  {participantsToRender.map((participant) => {
+                    const voteDisplay = isRevealedToRender
                       ? participant.vote ?? "—"
                       : participant.vote
                       ? "✓"
@@ -184,7 +306,7 @@ export function PlanningPokerClient({
                         <td className="px-6 py-3">
                           <span
                             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                              isRevealed && participant.vote
+                              isRevealedToRender && participant.vote
                                 ? "bg-orange-50 text-orange-700"
                                 : "bg-gray-100 text-gray-600"
                             }`}
@@ -201,7 +323,7 @@ export function PlanningPokerClient({
 
             {/* Reveal / Reset buttons */}
             <div className="flex items-center justify-center gap-3 px-6 py-4">
-              {!isRevealed ? (
+              {!isRevealedToRender ? (
                 <form
                   action={(formData) =>
                     startWork(async () => {

@@ -2,17 +2,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateSession } from "../planningPokerShared";
-
-//------------------------------------------------------
-// Source - https://stackoverflow.com/a
-// Posted by Bergi, modified by community. See post 'Timeline' for change history
-// Retrieved 2025-11-26, License - CC BY-SA 4.0
+import { updateSession, getSession } from "../planningPokerShared";
+import { broadcastToRoom } from "../../server/wsServer";
 
 function timeout(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
-//------------------------------------------------------
 
 export async function revealVotes(formData: FormData) {
   const roomId = formData.get("roomId");
@@ -24,6 +19,14 @@ export async function revealVotes(formData: FormData) {
     storyStatus: "revealed",
   }));
 
-  // Tell Next to re-render the home page on next request/render
+  const session = getSession(roomId);
+
+  // 🔴 NEW
+  broadcastToRoom(roomId, {
+    type: "session",
+    roomId,
+    session,
+  });
+
   revalidatePath("/");
 }
