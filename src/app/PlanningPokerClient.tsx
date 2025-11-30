@@ -79,8 +79,7 @@ export function PlanningPokerClient({
 
   const [isWorking, startWork] = useTransition();
 
-  // Load userId + profile from localStorage, decide whether to show modal,
-  // and auto-join the room if we already have a valid profile.
+  // Load userId + profile from localStorage, and auto-join the room if we have a profile
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -106,7 +105,6 @@ export function PlanningPokerClient({
     if (storedRole === "dev" || storedRole === "qa") setUserRole(storedRole);
 
     if (hasStoredProfile) {
-      // We have enough info to auto-join the room
       (async () => {
         try {
           await upsertParticipant(
@@ -115,7 +113,6 @@ export function PlanningPokerClient({
             storedName,
             storedRole as "dev" | "qa"
           );
-          // Ensure server-rendered data also includes this user
           router.refresh();
         } catch (err) {
           console.error("[profile] failed to auto-join room", err);
@@ -125,20 +122,22 @@ export function PlanningPokerClient({
         }
       })();
     } else {
-      // No valid stored profile → show modal
       setShowProfileModal(true);
       setProfileChecked(true);
     }
   }, [roomId, router]);
 
-  // WebSocket subscription: listen for session updates
+  // WebSocket subscription: listen for session updates.
+  // IMPORTANT: this sends userId in the join message.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!userId) return; // wait until we know the userId
 
     const ws = new WebSocket("ws://localhost:8080");
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", roomId }));
+      ws.send(JSON.stringify({ type: "join", roomId, userId }));
+      console.log("[ws] join sent", { roomId, userId });
     };
 
     ws.onmessage = (event) => {
@@ -160,7 +159,7 @@ export function PlanningPokerClient({
     return () => {
       ws.close();
     };
-  }, [roomId]);
+  }, [roomId, userId]);
 
   // Derive what to render from either the liveSession or initial props
   const sessionToRender: SessionData = liveSession ?? {
@@ -195,8 +194,6 @@ export function PlanningPokerClient({
     }
 
     if (!userId) {
-      // Should not normally happen because we initialize userId in useEffect,
-      // but guard just in case.
       return;
     }
 
@@ -205,13 +202,8 @@ export function PlanningPokerClient({
       window.localStorage.setItem("planningPokerUserRole", userRole);
     }
 
-    // Insert or update this user in the global room data on the server
     await upsertParticipant(roomId, userId, trimmedName, userRole);
-
-    // Refresh the data so the table reflects the updated participants
     router.refresh();
-
-    // User explicitly confirms → close modal
     setShowProfileModal(false);
   };
 
@@ -302,7 +294,9 @@ export function PlanningPokerClient({
                         <td className="px-6 py-3 font-medium text-gray-900">
                           {participant.name}
                         </td>
-                        <td className="px-6 py-3 text-gray-600">{roleLabel}</td>
+                        <td className="px-6 py-3 text-gray-600">
+                          {roleLabel}
+                        </td>
                         <td className="px-6 py-3">
                           <span
                             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
@@ -367,7 +361,9 @@ export function PlanningPokerClient({
       {profileChecked && showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Welcome</h2>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              Welcome
+            </h2>
             <p className="mb-4 text-sm text-gray-600">
               Please enter your name and role so we can attach your votes.
             </p>
