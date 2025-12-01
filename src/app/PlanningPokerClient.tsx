@@ -231,7 +231,7 @@ export function PlanningPokerClient({
         <button
           type="button"
           onClick={() => setShowProfileModal(true)}
-          className="rounded-md border border-dark-blue/40 bg-white/80 px-3 py-1 text-xs font-semibold text-dark-blue shadow-sm transition hover:bg-white hover:shadow-none focus:outline-none focus:ring-2 focus:ring-dark-blue focus:ring-offset-1"
+          className="rounded-md bg-dark-blue text-white px-4 py-2 text-xs font-semibold shadow-sm transition hover:bg-white hover:text-dark-blue focus:outline-none focus:ring-2 focus:ring-dark-blue focus:ring-offset-1"
         >
           Change profile
         </button>
@@ -254,10 +254,10 @@ export function PlanningPokerClient({
                       type="submit"
                       disabled={!hasUserProfile}
                       onClick={() => setSelectedVote(vote)}
-                      className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-none focus:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                      className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${
                         isSelected
-                          ? "bg-orange text-white"
-                          : "bg-white text-[hsl(var(--accent))] hover:bg-orange hover:text-white focus:bg-orange focus:text-white"
+                          ? "bg-orange text-white shadow-none"
+                          : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none focus:bg-orange focus:text-white"
                       }`}
                     >
                       {vote === "coffee" ? "☕️" : vote}
@@ -335,10 +335,10 @@ export function PlanningPokerClient({
                         </td>
                         <td className="px-6 py-3">
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${
                               isRevealedToRender && participant.vote
-                                ? "bg-orange-50 text-orange-700"
-                                : "bg-gray-100 text-gray-600"
+                                ? "bg-white text-gray-900 border-gray-300"
+                                : "bg-gray-100 text-gray-700 border-gray-300"
                             }`}
                           >
                             {voteDisplay}

@@ -17,23 +17,6 @@ export type SessionData = {
 // In-memory store keyed by roomId (NOT production-safe, but great for learning)
 const sessions = new Map<string, SessionData>();
 
-// Seed a default room for now
-const defaultRoomId = "000";
-if (!sessions.has(defaultRoomId)) {
-  sessions.set(defaultRoomId, {
-    storyStatus: "pending",
-    participants: [
-      { id: "p1", name: "Avery", role: "dev", vote: "5" },
-      { id: "p2", name: "Blake", role: "dev", vote: "3" },
-      { id: "p3", name: "Casey", role: "dev", vote: "5" },
-      { id: "p4", name: "Devon", role: "dev", vote: "8" },
-      { id: "p5", name: "Eden", role: "qa", vote: "3" },
-      { id: "p6", name: "Finley", role: "qa", vote: "?" },
-      { id: "p7", name: "Gray", role: "qa", vote: "5" },
-      { id: "p8", name: "Harper", role: "dev", vote: null },
-    ],
-  });
-}
 
 export function getSession(roomId: string): SessionData {
   const existing = sessions.get(roomId);
