@@ -32,22 +32,8 @@ export function attachWebSocketServer(server: HttpServer) {
           rooms.get(roomId)!.add(socket);
 
           socketInfo.set(socket, { roomId, userId });
-          console.log("[ws] join", { roomId, userId });
-
-          const userKey = `${roomId}:${userId}`;
-          const prevCount = userConnectionCounts.get(userKey) ?? 0;
-          userConnectionCounts.set(userKey, prevCount + 1);
 
           const session = getSession(roomId);
-          console.log("[ws] join snapshot", {
-            roomId,
-            participants: session.participants.map((p) => ({
-              id: p.id,
-              name: p.name,
-              role: p.role,
-              vote: p.vote,
-            })),
-          });
 
           socket.send(
             JSON.stringify({
@@ -57,8 +43,12 @@ export function attachWebSocketServer(server: HttpServer) {
             })
           );
         }
+        // if you add more message types later, handle them here
       } catch (err) {
-        console.error("[ws] failed to parse message", err);
+        console.error("[ws] failed to handle message", {
+          error: err instanceof Error ? err.message : String(err),
+          raw: data.toString(),
+        });
       }
     });
 
@@ -67,7 +57,6 @@ export function attachWebSocketServer(server: HttpServer) {
       if (!info) return;
 
       const { roomId, userId } = info;
-      console.log("[ws] close", { roomId, userId });
 
       const sockets = rooms.get(roomId);
       if (sockets) {
@@ -99,10 +88,11 @@ export function attachWebSocketServer(server: HttpServer) {
             session,
           });
         } catch (err) {
-          console.error(
-            `[ws] failed to remove user ${userId} from room ${roomId} on disconnect`,
-            err
-          );
+          console.error("[ws] error during disconnect cleanup", {
+            roomId,
+            userId,
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       } else {
         userConnectionCounts.set(userKey, prevCount - 1);
@@ -110,11 +100,11 @@ export function attachWebSocketServer(server: HttpServer) {
     });
 
     socket.on("error", (err) => {
-      console.error("[ws] socket error", err);
+      console.warn("[ws] socket error", {
+        error: err instanceof Error ? err.message : String(err),
+      });
     });
   });
-
-  console.log("[ws] WebSocket server attached to HTTP server at /ws");
 }
 
 export function broadcastToRoom(roomId: string, payload: unknown) {

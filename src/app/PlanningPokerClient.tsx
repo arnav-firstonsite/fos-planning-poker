@@ -25,7 +25,6 @@ function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
 }
 
-// Sorts participants according to storyStatus
 function sortParticipants(
   participants: Participant[],
   storyStatus: SessionData["storyStatus"]
@@ -54,6 +53,7 @@ async function postJson(path: string, body: any) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    // This will be caught and logged by callers
     throw new Error(`Request to ${path} failed with ${res.status}`);
   }
 }
@@ -78,7 +78,6 @@ export function PlanningPokerClient({
   const hasUserProfile =
     !!userId && !!userName && (userRole === "dev" || userRole === "qa");
 
-  // Keep selectedVote in sync with the current user's vote in the session
   useEffect(() => {
     const sourceSession: SessionData =
       liveSession ?? {
@@ -97,7 +96,6 @@ export function PlanningPokerClient({
 
   const [isWorking, startWork] = useTransition();
 
-  // Load userId + profile from localStorage, and auto-join the room if we have a profile
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -144,7 +142,6 @@ export function PlanningPokerClient({
     }
   }, [roomId]);
 
-  // WebSocket subscription: listen for session updates.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!userId) return;
@@ -156,27 +153,11 @@ export function PlanningPokerClient({
 
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "join", roomId, userId }));
-      console.log("[ws] join sent", { roomId, userId, wsUrl });
     };
 
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-
-        console.log("[ws] message received", {
-          raw: event.data,
-          parsedType: msg.type,
-          parsedRoomId: msg.roomId,
-          participantCount: msg.session?.participants?.length,
-          participants:
-            msg.session?.participants?.map((p: Participant) => ({
-              id: p.id,
-              name: p.name,
-              role: p.role,
-              vote: p.vote,
-            })) ?? null,
-        });
-
         if (msg.type === "session" && msg.roomId === roomId) {
           setLiveSession(msg.session as SessionData);
         }
@@ -185,8 +166,8 @@ export function PlanningPokerClient({
       }
     };
 
-    ws.onerror = (err) => {
-      console.error("[ws] error", err);
+    ws.onerror = (event) => {
+      console.error("[ws] socket error", event);
     };
 
     return () => {
@@ -239,7 +220,7 @@ export function PlanningPokerClient({
       });
       setShowProfileModal(false);
     } catch (err) {
-      console.error("[profile] failed to save", err);
+      console.error("[profile] failed to save profile", err);
     }
   };
 
@@ -249,7 +230,7 @@ export function PlanningPokerClient({
     try {
       await postJson("/api/submit-vote", { roomId, userId, vote });
     } catch (err) {
-      console.error("[vote] failed to submit", err);
+      console.error("[vote] failed to submit vote", err);
     }
   };
 
@@ -258,7 +239,7 @@ export function PlanningPokerClient({
       try {
         await postJson("/api/reveal", { roomId });
       } catch (err) {
-        console.error("[reveal] failed", err);
+        console.error("[reveal] failed to reveal votes", err);
       }
     });
   };
@@ -268,7 +249,7 @@ export function PlanningPokerClient({
       try {
         await postJson("/api/reset", { roomId });
       } catch (err) {
-        console.error("[reset] failed", err);
+        console.error("[reset] failed to reset votes", err);
       }
     });
   };
@@ -421,7 +402,6 @@ export function PlanningPokerClient({
         </div>
       </main>
 
-      {/* Only render the modal after we've checked localStorage */}
       {profileChecked && showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">

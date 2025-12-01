@@ -41,9 +41,18 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
   const url = req.url || "";
   const method = req.method || "GET";
 
-  // Simple routing
   if (method === "POST" && url === "/api/upsert-participant") {
-    const body = await parseJsonBody(req);
+    let body: any;
+    try {
+      body = await parseJsonBody(req);
+    } catch (err) {
+      console.error("[api] upsert-participant invalid JSON", err);
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Invalid JSON" }));
+      return;
+    }
+
     const { roomId, userId, name, role } = body ?? {};
 
     if (
@@ -66,63 +75,68 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       return;
     }
 
-    console.log("[api] upsert-participant", { roomId, userId, trimmedName, role });
-
-    updateSession(roomId, (session) => {
-      const existingIndex = session.participants.findIndex(
-        (p) => p.id === userId
-      );
-
-      const updatedParticipant = {
-        id: userId,
-        name: trimmedName,
-        role,
-        vote:
-          existingIndex === -1
-            ? null
-            : session.participants[existingIndex].vote,
-      };
-
-      let participants;
-      if (existingIndex === -1) {
-        participants = [...session.participants, updatedParticipant];
-      } else {
-        participants = session.participants.map((p, idx) =>
-          idx === existingIndex ? updatedParticipant : p
+    try {
+      updateSession(roomId, (session) => {
+        const existingIndex = session.participants.findIndex(
+          (p) => p.id === userId
         );
-      }
 
-      return {
-        ...session,
-        participants,
-      };
-    });
+        const updatedParticipant = {
+          id: userId,
+          name: trimmedName,
+          role,
+          vote:
+            existingIndex === -1
+              ? null
+              : session.participants[existingIndex].vote,
+        };
 
-    const session = getSession(roomId);
+        let participants;
+        if (existingIndex === -1) {
+          participants = [...session.participants, updatedParticipant];
+        } else {
+          participants = session.participants.map((p, idx) =>
+            idx === existingIndex ? updatedParticipant : p
+          );
+        }
 
-    console.log("[api] upsert-participant updated session", {
-      roomId,
-      participants: session.participants.map((p) => ({
-        id: p.id,
-        name: p.name,
-        role: p.role,
-        vote: p.vote,
-      })),
-    });
+        return {
+          ...session,
+          participants,
+        };
+      });
 
-    broadcastToRoom(roomId, {
-      type: "session",
-      roomId,
-      session,
-    });
+      const session = getSession(roomId);
 
-    res.statusCode = 204;
-    res.end();
+      broadcastToRoom(roomId, {
+        type: "session",
+        roomId,
+        session,
+      });
+
+      res.statusCode = 204;
+      res.end();
+    } catch (err) {
+      console.error("[api] upsert-participant failed", { roomId, userId }, err);
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Internal Server Error" }));
+    }
     return;
   }
 
   if (method === "POST" && url === "/api/submit-vote") {
-    const body = await parseJsonBody(req);
+    let body: any;
+    try {
+      body = await parseJsonBody(req);
+    } catch (err) {
+      console.error("[api] submit-vote invalid JSON", err);
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Invalid JSON" }));
+      return;
+    }
+
     const { roomId, userId, vote } = body ?? {};
 
     if (
@@ -145,35 +159,52 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       return;
     }
 
-    console.log("[api] submit-vote", { roomId, userId, vote: voteStr });
+    try {
+      updateSession(roomId, (session) => {
+        const hasParticipant = session.participants.some(
+          (p) => p.id === userId
+        );
+        if (!hasParticipant) return session;
 
-    updateSession(roomId, (session) => {
-      const hasParticipant = session.participants.some((p) => p.id === userId);
-      if (!hasParticipant) return session;
+        return {
+          ...session,
+          participants: session.participants.map((p) =>
+            p.id === userId ? { ...p, vote: voteStr } : p
+          ),
+        };
+      });
 
-      return {
-        ...session,
-        participants: session.participants.map((p) =>
-          p.id === userId ? { ...p, vote: voteStr } : p
-        ),
-      };
-    });
+      const session = getSession(roomId);
 
-    const session = getSession(roomId);
+      broadcastToRoom(roomId, {
+        type: "session",
+        roomId,
+        session,
+      });
 
-    broadcastToRoom(roomId, {
-      type: "session",
-      roomId,
-      session,
-    });
-
-    res.statusCode = 204;
-    res.end();
+      res.statusCode = 204;
+      res.end();
+    } catch (err) {
+      console.error("[api] submit-vote failed", { roomId, userId }, err);
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Internal Server Error" }));
+    }
     return;
   }
 
   if (method === "POST" && url === "/api/reveal") {
-    const body = await parseJsonBody(req);
+    let body: any;
+    try {
+      body = await parseJsonBody(req);
+    } catch (err) {
+      console.error("[api] reveal invalid JSON", err);
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Invalid JSON" }));
+      return;
+    }
+
     const { roomId } = body ?? {};
 
     if (typeof roomId !== "string") {
@@ -183,28 +214,43 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       return;
     }
 
-    console.log("[api] reveal", { roomId });
+    try {
+      updateSession(roomId, (session) => ({
+        ...session,
+        storyStatus: "revealed",
+      }));
 
-    updateSession(roomId, (session) => ({
-      ...session,
-      storyStatus: "revealed",
-    }));
+      const session = getSession(roomId);
 
-    const session = getSession(roomId);
+      broadcastToRoom(roomId, {
+        type: "session",
+        roomId,
+        session,
+      });
 
-    broadcastToRoom(roomId, {
-      type: "session",
-      roomId,
-      session,
-    });
-
-    res.statusCode = 204;
-    res.end();
+      res.statusCode = 204;
+      res.end();
+    } catch (err) {
+      console.error("[api] reveal failed", { roomId }, err);
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Internal Server Error" }));
+    }
     return;
   }
 
   if (method === "POST" && url === "/api/reset") {
-    const body = await parseJsonBody(req);
+    let body: any;
+    try {
+      body = await parseJsonBody(req);
+    } catch (err) {
+      console.error("[api] reset invalid JSON", err);
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Invalid JSON" }));
+      return;
+    }
+
     const { roomId } = body ?? {};
 
     if (typeof roomId !== "string") {
@@ -214,31 +260,35 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       return;
     }
 
-    console.log("[api] reset", { roomId });
+    try {
+      updateSession(roomId, (session) => ({
+        ...session,
+        storyStatus: "pending",
+        participants: session.participants.map((p) => ({
+          ...p,
+          vote: null,
+        })),
+      }));
 
-    updateSession(roomId, (session) => ({
-      ...session,
-      storyStatus: "pending",
-      participants: session.participants.map((p) => ({
-        ...p,
-        vote: null,
-      })),
-    }));
+      const session = getSession(roomId);
 
-    const session = getSession(roomId);
+      broadcastToRoom(roomId, {
+        type: "session",
+        roomId,
+        session,
+      });
 
-    broadcastToRoom(roomId, {
-      type: "session",
-      roomId,
-      session,
-    });
-
-    res.statusCode = 204;
-    res.end();
+      res.statusCode = 204;
+      res.end();
+    } catch (err) {
+      console.error("[api] reset failed", { roomId }, err);
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Internal Server Error" }));
+    }
     return;
   }
 
-  // Not one of our API routes
   res.statusCode = 404;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify({ error: "Not found" }));
@@ -255,17 +305,15 @@ async function main() {
         return;
       }
 
-      // Let Next handle everything else
       handle(req, res);
     } catch (err) {
-      console.error("[http] error", err);
+      console.error("[http] unhandled error", err);
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ error: "Internal Server Error" }));
     }
   });
 
-  // Attach WebSocket server to the same HTTP server
   attachWebSocketServer(server);
 
   server.listen(port, () => {
