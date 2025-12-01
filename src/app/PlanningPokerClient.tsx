@@ -225,7 +225,7 @@ export function PlanningPokerClient({
   };
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center bg-light-grey font-sans ">
+    <div className="min-h-screen flex flex-col bg-light-grey font-sans ">
       <header className="flex items-center justify-between h-12 bg-orange w-full px-4 text-dark-blue">
         <div className="font-semibold">First Onsite Planning Poker</div>
         <button
@@ -237,7 +237,7 @@ export function PlanningPokerClient({
         </button>
       </header>
 
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-center px-6 py-16">
+      <main className="flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-16">
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
             {/* Vote buttons */}
