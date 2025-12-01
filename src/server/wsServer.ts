@@ -12,14 +12,10 @@ const rooms: RoomsMap = new Map();
 const socketInfo = new Map<WebSocket, SocketInfo>();
 const userConnectionCounts: UserConnectionCounts = new Map();
 
-/**
- * Attach a WebSocket server to an existing HTTP server.
- * This keeps everything in a single Node process, sharing the in-memory sessions.
- */
 export function attachWebSocketServer(server: HttpServer) {
   const wss = new WebSocketServer({
     server,
-    path: "/ws", // only handle WebSocket upgrades on /ws
+    path: "/ws",
   });
 
   wss.on("connection", (socket: WebSocket) => {
@@ -32,22 +28,26 @@ export function attachWebSocketServer(server: HttpServer) {
           const userId = String(msg.userId ?? "").trim();
           if (!roomId || !userId) return;
 
-          // Track socket per room
           if (!rooms.has(roomId)) rooms.set(roomId, new Set());
           rooms.get(roomId)!.add(socket);
 
-          // Remember which room/user this socket represents
           socketInfo.set(socket, { roomId, userId });
-
           console.log("[ws] join", { roomId, userId });
 
-          // Increment per-user connection count
           const userKey = `${roomId}:${userId}`;
           const prevCount = userConnectionCounts.get(userKey) ?? 0;
           userConnectionCounts.set(userKey, prevCount + 1);
 
-          // Send the current session snapshot to the newly joined client
           const session = getSession(roomId);
+          console.log("[ws] join snapshot", {
+            roomId,
+            participants: session.participants.map((p) => ({
+              id: p.id,
+              name: p.name,
+              role: p.role,
+              vote: p.vote,
+            })),
+          });
 
           socket.send(
             JSON.stringify({
@@ -69,7 +69,6 @@ export function attachWebSocketServer(server: HttpServer) {
       const { roomId, userId } = info;
       console.log("[ws] close", { roomId, userId });
 
-      // Clean up socket from room map
       const sockets = rooms.get(roomId);
       if (sockets) {
         sockets.delete(socket);
@@ -80,13 +79,10 @@ export function attachWebSocketServer(server: HttpServer) {
 
       socketInfo.delete(socket);
 
-      // Handle per-user connection count and conditional participant removal
       const userKey = `${roomId}:${userId}`;
       const prevCount = userConnectionCounts.get(userKey) ?? 0;
 
       if (prevCount <= 1) {
-        // This was the last active connection for this user in this room:
-        // remove them from the session and delete the counter entry.
         userConnectionCounts.delete(userKey);
 
         try {
@@ -109,7 +105,6 @@ export function attachWebSocketServer(server: HttpServer) {
           );
         }
       } else {
-        // Other connections for this user are still active; just decrement.
         userConnectionCounts.set(userKey, prevCount - 1);
       }
     });
@@ -122,9 +117,6 @@ export function attachWebSocketServer(server: HttpServer) {
   console.log("[ws] WebSocket server attached to HTTP server at /ws");
 }
 
-/**
- * Broadcast a payload to all clients subscribed to a room.
- */
 export function broadcastToRoom(roomId: string, payload: unknown) {
   const sockets = rooms.get(roomId);
   if (!sockets) return;
