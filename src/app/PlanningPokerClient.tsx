@@ -255,7 +255,7 @@ export function PlanningPokerClient({
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-light-grey font-sans ">
+    <div className="min-h-screen flex flex-col items-center bg-light-grey font-sans">
       <header className="flex items-center justify-between h-12 bg-orange w-full px-4 text-dark-blue">
         <div className="font-semibold">First Onsite Planning Poker</div>
         <button
