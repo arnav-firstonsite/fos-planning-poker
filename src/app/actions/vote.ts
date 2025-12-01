@@ -63,55 +63,48 @@ export async function submitVote(formData: FormData) {
 export async function upsertParticipant(
   roomId: string,
   userId: string,
-  userName: string,
-  userRole: "dev" | "qa"
+  name: string,
+  role: "dev" | "qa"
 ) {
-  const trimmedRoomId = roomId.trim();
-  const trimmedUserId = userId.trim();
-  const trimmedName = userName.trim();
+  const trimmedName = name.trim();
+  if (!trimmedName) return;
 
-  if (
-    !trimmedRoomId ||
-    !trimmedUserId ||
-    !trimmedName ||
-    (userRole !== "dev" && userRole !== "qa")
-  ) {
-    return;
-  }
+  updateSession(roomId, (session) => {
+    const existingIndex = session.participants.findIndex(
+      (p) => p.id === userId
+    );
 
-  updateSession(trimmedRoomId, (session) => {
-    const existing = session.participants.find((p) => p.id === trimmedUserId);
-
-    if (existing) {
-      return {
-        ...session,
-        participants: session.participants.map((p) =>
-          p.id === trimmedUserId ? { ...p, name: trimmedName, role: userRole } : p
-        ),
-      };
-    }
-
-    const newParticipant: Participant = {
-      id: trimmedUserId,
+    const updatedParticipant = {
+      id: userId,
       name: trimmedName,
-      role: userRole,
-      vote: null,
+      role,
+      // preserve existing vote if already present
+      vote:
+        existingIndex === -1
+          ? null
+          : session.participants[existingIndex].vote,
     };
+
+    let participants;
+    if (existingIndex === -1) {
+      participants = [...session.participants, updatedParticipant];
+    } else {
+      participants = session.participants.map((p, idx) =>
+        idx === existingIndex ? updatedParticipant : p
+      );
+    }
 
     return {
       ...session,
-      participants: [...session.participants, newParticipant],
+      participants,
     };
   });
 
-  const session = getSession(trimmedRoomId);
+  const session = getSession(roomId);
 
-  // Broadcast updated session to all clients
-  broadcastToRoom(trimmedRoomId, {
+  broadcastToRoom(roomId, {
     type: "session",
-    roomId: trimmedRoomId,
+    roomId,
     session,
   });
-
-  revalidatePath("/");
 }

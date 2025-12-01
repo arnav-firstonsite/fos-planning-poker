@@ -1,5 +1,6 @@
 // src/server/wsServer.ts
 import { WebSocketServer, WebSocket } from "ws";
+import type { Server as HttpServer } from "http";
 import { updateSession, getSession } from "../app/planningPokerShared";
 
 type RoomId = string;
@@ -7,25 +8,19 @@ type RoomsMap = Map<RoomId, Set<WebSocket>>;
 type SocketInfo = { roomId: RoomId; userId: string };
 type UserConnectionCounts = Map<string, number>; // key: `${roomId}:${userId}`
 
-// Use a global so we don't create multiple servers during dev HMR
-declare global {
-  // eslint-disable-next-line no-var
-  var __FOS_WS_SERVER__:
-    | {
-        wss: WebSocketServer;
-        rooms: RoomsMap;
-        socketInfo: Map<WebSocket, SocketInfo>;
-        userConnectionCounts: UserConnectionCounts;
-      }
-    | undefined;
-}
+const rooms: RoomsMap = new Map();
+const socketInfo = new Map<WebSocket, SocketInfo>();
+const userConnectionCounts: UserConnectionCounts = new Map();
 
-function createServer() {
-  const rooms: RoomsMap = new Map();
-  const socketInfo = new Map<WebSocket, SocketInfo>();
-  const userConnectionCounts: UserConnectionCounts = new Map();
-
-  const wss = new WebSocketServer({ port: 8080 });
+/**
+ * Attach a WebSocket server to an existing HTTP server.
+ * This keeps everything in a single Node process, sharing the in-memory sessions.
+ */
+export function attachWebSocketServer(server: HttpServer) {
+  const wss = new WebSocketServer({
+    server,
+    path: "/ws", // only handle WebSocket upgrades on /ws
+  });
 
   wss.on("connection", (socket: WebSocket) => {
     socket.on("message", (data) => {
@@ -50,6 +45,17 @@ function createServer() {
           const userKey = `${roomId}:${userId}`;
           const prevCount = userConnectionCounts.get(userKey) ?? 0;
           userConnectionCounts.set(userKey, prevCount + 1);
+
+          // Send the current session snapshot to the newly joined client
+          const session = getSession(roomId);
+
+          socket.send(
+            JSON.stringify({
+              type: "session",
+              roomId,
+              session,
+            })
+          );
         }
       } catch (err) {
         console.error("[ws] failed to parse message", err);
@@ -113,17 +119,8 @@ function createServer() {
     });
   });
 
-  console.log("[ws] WebSocket server listening on ws://localhost:8080");
-
-  return { wss, rooms, socketInfo, userConnectionCounts };
+  console.log("[ws] WebSocket server attached to HTTP server at /ws");
 }
-
-const server =
-  global.__FOS_WS_SERVER__ ?? (global.__FOS_WS_SERVER__ = createServer());
-
-export const rooms = server.rooms;
-export const socketInfo = server.socketInfo;
-export const userConnectionCounts = server.userConnectionCounts;
 
 /**
  * Broadcast a payload to all clients subscribed to a room.

@@ -77,6 +77,11 @@ export function PlanningPokerClient({
   // Live session from websockets (overrides initial props when present)
   const [liveSession, setLiveSession] = useState<SessionData | null>(null);
   const [selectedVote, setSelectedVote] = useState<Vote | null>(null);
+
+    // Requires userId + name + valid role
+  const hasUserProfile =
+    !!userId && !!userName && (userRole === "dev" || userRole === "qa");
+
   // Keep selectedVote in sync with the current user's vote in the session
   useEffect(() => {
     const sourceSession: SessionData =
@@ -148,39 +153,47 @@ export function PlanningPokerClient({
     }
   }, [roomId, router]);
 
-  // WebSocket subscription: listen for session updates.
-  // IMPORTANT: this sends userId in the join message.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!userId) return; // wait until we know the userId
+// WebSocket subscription: listen for session updates.
+// IMPORTANT: this sends userId in the join message.
+useEffect(() => {
+  if (typeof window === "undefined") return;
 
-    const ws = new WebSocket("ws://localhost:8080");
+  // Don't connect until we:
+  // - know the userId
+  // - have checked localStorage
+  // - have a valid stored profile (name + role)
+  if (!userId || !profileChecked || !hasUserProfile) return;
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", roomId, userId }));
-      console.log("[ws] join sent", { roomId, userId });
-    };
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = `${protocol}://${window.location.host}/ws`;
 
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
+  const ws = new WebSocket(wsUrl);
 
-        if (msg.type === "session" && msg.roomId === roomId) {
-          setLiveSession(msg.session as SessionData);
-        }
-      } catch (err) {
-        console.error("[ws] bad message", err);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "join", roomId, userId }));
+    console.log("[ws] join sent", { roomId, userId, wsUrl });
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === "session" && msg.roomId === roomId) {
+        setLiveSession(msg.session as SessionData);
       }
-    };
+    } catch (err) {
+      console.error("[ws] bad message", err);
+    }
+  };
 
-    ws.onerror = (err) => {
-      console.error("[ws] error", err);
-    };
+  ws.onerror = (err) => {
+    console.error("[ws] error", err);
+  };
 
-    return () => {
-      ws.close();
-    };
-  }, [roomId, userId]);
+  return () => {
+    ws.close();
+  };
+}, [roomId, userId, profileChecked, hasUserProfile]);
 
   // Derive what to render from either the liveSession or initial props
   const sessionToRender: SessionData = liveSession ?? {
@@ -201,10 +214,6 @@ export function PlanningPokerClient({
   const qaAverageToRender = liveSession
     ? averageForRole(sessionToRender, "qa")
     : qaAverage;
-
-  // Requires userId + name + valid role
-  const hasUserProfile =
-    !!userId && !!userName && (userRole === "dev" || userRole === "qa");
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

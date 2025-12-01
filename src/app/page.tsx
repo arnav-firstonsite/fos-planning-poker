@@ -10,8 +10,6 @@ import {
 } from "./planningPokerShared";
 import { PlanningPokerClient } from "./PlanningPokerClient";
 
-import "../server/wsServer";
-
 const ROOM_ID = "000";
 
 export default async function Home() {
