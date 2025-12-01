@@ -131,10 +131,14 @@ export function PlanningPokerClient({
             storedRole as "dev" | "qa"
           );
           router.refresh();
+          // Only hide the modal if auto-join succeeds
+          setShowProfileModal(false);
         } catch (err) {
           console.error("[profile] failed to auto-join room", err);
+          // If auto-join fails, show the modal so the user can fix or confirm their profile
+          setShowProfileModal(true);
         } finally {
-          setShowProfileModal(false);
+          // In all cases, we've checked localStorage and attempted auto-join
           setProfileChecked(true);
         }
       })();
