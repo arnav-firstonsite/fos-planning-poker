@@ -2,10 +2,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { submitVote, upsertParticipant } from "./actions/vote";
-import { revealVotes } from "./actions/reveal";
-import { resetVotes } from "./actions/reset";
 import {
   Vote,
   Participant,
@@ -29,9 +25,6 @@ function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
 }
 
-// Sorts participants according to storyStatus:
-// - Before reveal: devs first, QA last, A–Z by name within each group.
-// - After reveal: devs first, QA last, highest vote → lowest within each group.
 function sortParticipants(
   participants: Participant[],
   storyStatus: SessionData["storyStatus"]
@@ -43,17 +36,26 @@ function sortParticipants(
     if (roleDiff !== 0) return roleDiff;
 
     if (!isRevealed) {
-      // Pending: ignore votes for ordering, sort by name within role
       return a.name.localeCompare(b.name);
     }
 
-    // Revealed: sort by numeric vote (high → low) within role
     const voteDiff = voteValue(b.vote) - voteValue(a.vote);
     if (voteDiff !== 0) return voteDiff;
 
-    // Tie-break by name
     return a.name.localeCompare(b.name);
   });
+}
+
+async function postJson(path: string, body: any) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    // This will be caught and logged by callers
+    throw new Error(`Request to ${path} failed with ${res.status}`);
+  }
 }
 
 export function PlanningPokerClient({
@@ -63,21 +65,19 @@ export function PlanningPokerClient({
   isRevealed,
   roomId,
 }: Props) {
-  const router = useRouter();
-
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
 
-  // Whether we've checked localStorage for profile info
   const [profileChecked, setProfileChecked] = useState(false);
-  // Controls whether the modal is visible
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Live session from websockets (overrides initial props when present)
   const [liveSession, setLiveSession] = useState<SessionData | null>(null);
   const [selectedVote, setSelectedVote] = useState<Vote | null>(null);
-  // Keep selectedVote in sync with the current user's vote in the session
+
+  const hasUserProfile =
+    !!userId && !!userName && (userRole === "dev" || userRole === "qa");
+
   useEffect(() => {
     const sourceSession: SessionData =
       liveSession ?? {
@@ -96,11 +96,9 @@ export function PlanningPokerClient({
 
   const [isWorking, startWork] = useTransition();
 
-  // Load userId + profile from localStorage, and auto-join the room if we have a profile
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Ensure we have a stable userId
     let storedId = window.localStorage.getItem("planningPokerUserId");
     if (!storedId) {
       storedId =
@@ -124,21 +122,17 @@ export function PlanningPokerClient({
     if (hasStoredProfile) {
       (async () => {
         try {
-          await upsertParticipant(
+          await postJson("/api/upsert-participant", {
             roomId,
-            storedId,
-            storedName,
-            storedRole as "dev" | "qa"
-          );
-          router.refresh();
-          // Only hide the modal if auto-join succeeds
+            userId: storedId,
+            name: storedName,
+            role: storedRole,
+          });
           setShowProfileModal(false);
         } catch (err) {
           console.error("[profile] failed to auto-join room", err);
-          // If auto-join fails, show the modal so the user can fix or confirm their profile
           setShowProfileModal(true);
         } finally {
-          // In all cases, we've checked localStorage and attempted auto-join
           setProfileChecked(true);
         }
       })();
@@ -146,35 +140,34 @@ export function PlanningPokerClient({
       setShowProfileModal(true);
       setProfileChecked(true);
     }
-  }, [roomId, router]);
+  }, [roomId]);
 
-  // WebSocket subscription: listen for session updates.
-  // IMPORTANT: this sends userId in the join message.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!userId) return; // wait until we know the userId
+    if (!userId) return;
 
-    const ws = new WebSocket("ws://localhost:8080");
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${protocol}://${window.location.host}/ws`;
+
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "join", roomId, userId }));
-      console.log("[ws] join sent", { roomId, userId });
     };
 
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-
         if (msg.type === "session" && msg.roomId === roomId) {
           setLiveSession(msg.session as SessionData);
         }
       } catch (err) {
-        console.error("[ws] bad message", err);
+        console.error("[ws] bad message", err, { raw: event.data });
       }
     };
 
-    ws.onerror = (err) => {
-      console.error("[ws] error", err);
+    ws.onerror = (event) => {
+      console.error("[ws] socket error", event);
     };
 
     return () => {
@@ -182,7 +175,6 @@ export function PlanningPokerClient({
     };
   }, [roomId, userId]);
 
-  // Derive what to render from either the liveSession or initial props
   const sessionToRender: SessionData = liveSession ?? {
     participants,
     storyStatus: isRevealed ? "revealed" : "pending",
@@ -202,10 +194,6 @@ export function PlanningPokerClient({
     ? averageForRole(sessionToRender, "qa")
     : qaAverage;
 
-  // Requires userId + name + valid role
-  const hasUserProfile =
-    !!userId && !!userName && (userRole === "dev" || userRole === "qa");
-
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -223,9 +211,47 @@ export function PlanningPokerClient({
       window.localStorage.setItem("planningPokerUserRole", userRole);
     }
 
-    await upsertParticipant(roomId, userId, trimmedName, userRole);
-    router.refresh();
-    setShowProfileModal(false);
+    try {
+      await postJson("/api/upsert-participant", {
+        roomId,
+        userId,
+        name: trimmedName,
+        role: userRole,
+      });
+      setShowProfileModal(false);
+    } catch (err) {
+      console.error("[profile] failed to save profile", err);
+    }
+  };
+
+  const handleVoteClick = async (vote: Vote) => {
+    if (!hasUserProfile || !userId) return;
+    setSelectedVote(vote);
+    try {
+      await postJson("/api/submit-vote", { roomId, userId, vote });
+    } catch (err) {
+      console.error("[vote] failed to submit vote", err);
+    }
+  };
+
+  const handleRevealClick = () => {
+    startWork(async () => {
+      try {
+        await postJson("/api/reveal", { roomId });
+      } catch (err) {
+        console.error("[reveal] failed to reveal votes", err);
+      }
+    });
+  };
+
+  const handleResetClick = () => {
+    startWork(async () => {
+      try {
+        await postJson("/api/reset", { roomId });
+      } catch (err) {
+        console.error("[reset] failed to reset votes", err);
+      }
+    });
   };
 
   return (
@@ -250,23 +276,19 @@ export function PlanningPokerClient({
                 const isSelected = selectedVote === vote;
 
                 return (
-                  <form key={vote} action={submitVote} className="flex">
-                    <input type="hidden" name="vote" value={vote} />
-                    <input type="hidden" name="roomId" value={roomId} />
-                    <input type="hidden" name="userId" value={userId} />
-                    <button
-                      type="submit"
-                      disabled={!hasUserProfile}
-                      onClick={() => setSelectedVote(vote)}
-                      className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${
-                        isSelected
-                          ? "bg-orange text-white shadow-none"
-                          : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none focus:bg-orange focus:text-white"
-                      }`}
-                    >
-                      {vote === "coffee" ? "☕️" : vote}
-                    </button>
-                  </form>
+                  <button
+                    key={vote}
+                    type="button"
+                    disabled={!hasUserProfile}
+                    onClick={() => handleVoteClick(vote)}
+                    className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                      isSelected
+                        ? "bg-orange text-white shadow-none"
+                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none focus:bg-orange focus:text-white"
+                    }`}
+                  >
+                    {vote === "coffee" ? "☕️" : vote}
+                  </button>
                 );
               })}
             </div>
@@ -310,7 +332,6 @@ export function PlanningPokerClient({
                         ? "QA"
                         : capitalizeFirstLetter(participant.role);
 
-                    // Begin replacement block for row background and name cell
                     const isCurrentUser = participant.id === userId;
 
                     const baseRowTone =
@@ -358,46 +379,29 @@ export function PlanningPokerClient({
             {/* Reveal / Reset buttons */}
             <div className="flex items-center justify-center gap-3 px-6 py-4">
               {!isRevealedToRender ? (
-                <form
-                  action={(formData) =>
-                    startWork(async () => {
-                      await revealVotes(formData);
-                    })
-                  }
+                <button
+                  type="button"
+                  disabled={isWorking}
+                  onClick={handleRevealClick}
+                  className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  <input type="hidden" name="roomId" value={roomId} />
-                  <button
-                    type="submit"
-                    disabled={isWorking}
-                    className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {isWorking ? "Working..." : "Reveal Votes"}
-                  </button>
-                </form>
+                  {isWorking ? "Working..." : "Reveal Votes"}
+                </button>
               ) : (
-                <form
-                  action={(formData) =>
-                    startWork(async () => {
-                      await resetVotes(formData);
-                    })
-                  }
+                <button
+                  type="button"
+                  disabled={isWorking}
+                  onClick={handleResetClick}
+                  className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  <input type="hidden" name="roomId" value={roomId} />
-                  <button
-                    type="submit"
-                    disabled={isWorking}
-                    className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {isWorking ? "Working..." : "Reset"}
-                  </button>
-                </form>
+                  {isWorking ? "Working..." : "Reset"}
+                </button>
               )}
             </div>
           </div>
         </div>
       </main>
 
-      {/* Only render the modal after we've checked localStorage */}
       {profileChecked && showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
