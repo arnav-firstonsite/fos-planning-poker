@@ -14,9 +14,8 @@ export type SessionData = {
   storyStatus: "pending" | "revealed";
 };
 
-// In-memory store keyed by roomId (NOT production-safe, but great for learning)
+// In-memory store keyed by roomId
 const sessions = new Map<string, SessionData>();
-
 
 export function getSession(roomId: string): SessionData {
   const existing = sessions.get(roomId);
