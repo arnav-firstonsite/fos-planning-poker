@@ -142,7 +142,7 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
     if (
       typeof roomId !== "string" ||
       typeof userId !== "string" ||
-      typeof vote !== "string"
+      !(typeof vote === "string" || vote === null)
     ) {
       res.statusCode = 400;
       res.setHeader("Content-Type", "application/json");
@@ -150,9 +150,25 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       return;
     }
 
-    const voteStr = vote.trim() as Vote;
-    const allowedVotes: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
-    if (!allowedVotes.includes(voteStr)) {
+    const trimmedRoomId = roomId.trim();
+    const trimmedUserId = userId.trim();
+
+    const allowedVotes: Vote[] = [
+      "0",
+      "1",
+      "2",
+      "3",
+      "5",
+      "8",
+      "13",
+      "?",
+      "coffee",
+    ];
+
+    const nextVote: Vote | null =
+      vote === null ? null : (vote.trim() as Vote);
+
+    if (nextVote !== null && !allowedVotes.includes(nextVote)) {
       res.statusCode = 400;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ error: "Invalid vote" }));
@@ -160,32 +176,32 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
     }
 
     try {
-      updateSession(roomId, (session) => {
+      updateSession(trimmedRoomId, (session) => {
         const hasParticipant = session.participants.some(
-          (p) => p.id === userId
+          (p) => p.id === trimmedUserId
         );
         if (!hasParticipant) return session;
 
         return {
           ...session,
           participants: session.participants.map((p) =>
-            p.id === userId ? { ...p, vote: voteStr } : p
+            p.id === trimmedUserId ? { ...p, vote: nextVote } : p
           ),
         };
       });
 
-      const session = getSession(roomId);
+      const session = getSession(trimmedRoomId);
 
-      broadcastToRoom(roomId, {
+      broadcastToRoom(trimmedRoomId, {
         type: "session",
-        roomId,
+        roomId: trimmedRoomId,
         session,
       });
 
       res.statusCode = 204;
       res.end();
     } catch (err) {
-      console.error("[api] submit-vote failed", { roomId, userId }, err);
+      console.error("[api] submit-vote failed", { roomId: trimmedRoomId, userId: trimmedUserId }, err);
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ error: "Internal Server Error" }));

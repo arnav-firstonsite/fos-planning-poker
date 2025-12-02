@@ -53,7 +53,6 @@ async function postJson(path: string, body: any) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    // This will be caught and logged by callers
     throw new Error(`Request to ${path} failed with ${res.status}`);
   }
 }
@@ -73,26 +72,12 @@ export function PlanningPokerClient({
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   const [liveSession, setLiveSession] = useState<SessionData | null>(null);
+
+  // Local UI-only selection state so buttons update immediately
   const [selectedVote, setSelectedVote] = useState<Vote | null>(null);
 
   const hasUserProfile =
     !!userId && !!userName && (userRole === "dev" || userRole === "qa");
-
-  useEffect(() => {
-    const sourceSession: SessionData =
-      liveSession ?? {
-        participants,
-        storyStatus: isRevealed ? "revealed" : "pending",
-      };
-
-    if (!userId) {
-      setSelectedVote(null);
-      return;
-    }
-
-    const me = sourceSession.participants.find((p) => p.id === userId);
-    setSelectedVote(me?.vote ?? null);
-  }, [liveSession, participants, userId, isRevealed]);
 
   const [isWorking, startWork] = useTransition();
 
@@ -175,6 +160,7 @@ export function PlanningPokerClient({
     };
   }, [roomId, userId]);
 
+  // Derive what to render from either the liveSession or initial props
   const sessionToRender: SessionData = liveSession ?? {
     participants,
     storyStatus: isRevealed ? "revealed" : "pending",
@@ -193,6 +179,18 @@ export function PlanningPokerClient({
   const qaAverageToRender = liveSession
     ? averageForRole(sessionToRender, "qa")
     : qaAverage;
+
+  const currentUser = sessionToRender.participants.find(
+    (p) => p.id === userId
+  );
+
+  // If the server says we have no vote (e.g., after reset),
+  // clear local selection so UI stays in sync.
+  useEffect(() => {
+    if (!currentUser?.vote && selectedVote !== null) {
+      setSelectedVote(null);
+    }
+  }, [currentUser?.vote, selectedVote]);
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -226,9 +224,20 @@ export function PlanningPokerClient({
 
   const handleVoteClick = async (vote: Vote) => {
     if (!hasUserProfile || !userId) return;
-    setSelectedVote(vote);
+
+    // Use the most recent idea of the current vote:
+    // prefer server session if present, otherwise fall back to local state.
+    const currentVoteInSession: Vote | null = currentUser?.vote ?? null;
+    const effectiveCurrent = currentVoteInSession ?? selectedVote;
+
+    // Toggle: clicking the same vote again clears it
+    const newVote: Vote | null = effectiveCurrent === vote ? null : vote;
+
+    // Update local UI immediately
+    setSelectedVote(newVote);
+
     try {
-      await postJson("/api/submit-vote", { roomId, userId, vote });
+      await postJson("/api/submit-vote", { roomId, userId, vote: newVote });
     } catch (err) {
       console.error("[vote] failed to submit vote", err);
     }
@@ -248,6 +257,8 @@ export function PlanningPokerClient({
     startWork(async () => {
       try {
         await postJson("/api/reset", { roomId });
+        // Local reset of selection as well
+        setSelectedVote(null);
       } catch (err) {
         console.error("[reset] failed to reset votes", err);
       }
@@ -273,7 +284,9 @@ export function PlanningPokerClient({
             {/* Vote buttons */}
             <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
               {VOTE_OPTIONS.map((vote) => {
-                const isSelected = selectedVote === vote;
+                // Highlight if either local or server state says this is our vote
+                const isSelected =
+                  selectedVote === vote || currentUser?.vote === vote;
 
                 return (
                   <button
@@ -281,10 +294,10 @@ export function PlanningPokerClient({
                     type="button"
                     disabled={!hasUserProfile}
                     onClick={() => handleVoteClick(vote)}
-                    className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                    className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
                       isSelected
                         ? "bg-orange text-white shadow-none"
-                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none focus:bg-orange focus:text-white"
+                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none"
                     }`}
                   >
                     {vote === "coffee" ? "☕️" : vote}
@@ -349,7 +362,9 @@ export function PlanningPokerClient({
                         <td className="px-6 py-3 font-medium text-gray-900">
                           {participant.name}
                           {isCurrentUser && (
-                            <span className="ml-2 text-xs font-normal text-gray-700">(you)</span>
+                            <span className="ml-2 text-xs font-normal text-gray-700">
+                              (you)
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-3 text-gray-600">
