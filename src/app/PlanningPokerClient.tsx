@@ -305,7 +305,7 @@ export function PlanningPokerClient({ roomId }: Props) {
                       : "—";
 
                     const hasVote = participant.vote !== null;
-                    
+
                     const badgeClasses = {
                       gray: "bg-gray-100 text-gray-700 border-gray-300",
                       green: 'bg-green-100 text-green-800 border-green-300',
@@ -316,7 +316,7 @@ export function PlanningPokerClient({ roomId }: Props) {
                       ? hasVote
                         ? badgeClasses.green
                         : badgeClasses.gray
-                      : participant.vote
+                      : hasVote
                         ? badgeClasses.white
                         : badgeClasses.gray;
 
