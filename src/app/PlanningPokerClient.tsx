@@ -304,6 +304,22 @@ export function PlanningPokerClient({ roomId }: Props) {
                       ? "✓"
                       : "—";
 
+                    const hasVote = participant.vote !== null;
+                    
+                    const badgeClasses = {
+                      gray: "bg-gray-100 text-gray-700 border-gray-300",
+                      green: 'bg-green-100 text-green-800 border-green-300',
+                      white: 'bg-white text-gray-900 border-gray-300'
+                    }
+
+                    const selectedBadgeClasses = !isRevealedToRender
+                      ? hasVote
+                        ? badgeClasses.green
+                        : badgeClasses.gray
+                      : participant.vote
+                        ? badgeClasses.white
+                        : badgeClasses.gray;
+
                     const roleLabel =
                       participant.role === "qa"
                         ? "QA"
@@ -336,11 +352,7 @@ export function PlanningPokerClient({ roomId }: Props) {
                         </td>
                         <td className="px-6 py-3">
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${
-                              isRevealedToRender && participant.vote
-                                ? "bg-white text-gray-900 border-gray-300"
-                                : "bg-gray-100 text-gray-700 border-gray-300"
-                            }`}
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${selectedBadgeClasses}`}
                           >
                             {voteDisplay}
                           </span>
