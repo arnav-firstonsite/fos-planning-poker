@@ -267,7 +267,7 @@ export function PlanningPokerClient({
         </button>
       </header>
 
-      <main className="flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 pt-6 pb-10 md:px-6 md:py-16 md:-mt-6">
+      <main className="flex w-full max-w-3xl flex-1 flex-col items-center justify-start px-4 pt-10 pb-4 md:justify-center md:px-6 md:py-16 md:-mt-6">
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
             {/* Vote buttons */}
