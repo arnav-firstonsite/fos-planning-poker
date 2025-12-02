@@ -336,16 +336,10 @@ export function PlanningPokerClient({
 
                     const baseRowTone =
                       participant.role === "dev"
-                        ? isCurrentUser
-                          ? "bg-blue-100"
-                          : "bg-blue-50/80"
+                        ? "bg-light-blue/20"
                         : participant.role === "qa"
-                        ? isCurrentUser
-                          ? "bg-orange-100"
-                          : "bg-orange-50/80"
-                        : isCurrentUser
-                        ? "bg-gray-100"
-                        : "bg-gray-50";
+                        ? "bg-orange/40"
+                        : "bg-light-grey";
 
                     return (
                       <tr
@@ -354,6 +348,9 @@ export function PlanningPokerClient({
                       >
                         <td className="px-6 py-3 font-medium text-gray-900">
                           {participant.name}
+                          {isCurrentUser && (
+                            <span className="ml-2 text-xs font-normal text-gray-700">(you)</span>
+                          )}
                         </td>
                         <td className="px-6 py-3 text-gray-600">
                           {roleLabel}
