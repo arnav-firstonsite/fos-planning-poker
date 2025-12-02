@@ -14,10 +14,6 @@ import {
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
 
 type Props = {
-  participants: Participant[];
-  devAverage: string;
-  qaAverage: string;
-  isRevealed: boolean;
   roomId: string;
 };
 
@@ -57,13 +53,7 @@ async function postJson(path: string, body: any) {
   }
 }
 
-export function PlanningPokerClient({
-  participants,
-  devAverage,
-  qaAverage,
-  isRevealed,
-  roomId,
-}: Props) {
+export function PlanningPokerClient({ roomId }: Props) {
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
@@ -71,16 +61,15 @@ export function PlanningPokerClient({
   const [profileChecked, setProfileChecked] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  // Live session coming from WebSocket – single source of truth for game state
   const [liveSession, setLiveSession] = useState<SessionData | null>(null);
-
-  // Local UI-only selection state so buttons update immediately
-  const [selectedVote, setSelectedVote] = useState<Vote | null>(null);
 
   const hasUserProfile =
     !!userId && !!userName && (userRole === "dev" || userRole === "qa");
 
   const [isWorking, startWork] = useTransition();
 
+  // Bootstrap identity from localStorage and auto-join room if profile exists
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -127,6 +116,7 @@ export function PlanningPokerClient({
     }
   }, [roomId]);
 
+  // WebSocket: subscribe to session updates
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!userId) return;
@@ -160,11 +150,9 @@ export function PlanningPokerClient({
     };
   }, [roomId, userId]);
 
-  // Derive what to render from either the liveSession or initial props
-  const sessionToRender: SessionData = liveSession ?? {
-    participants,
-    storyStatus: isRevealed ? "revealed" : "pending",
-  };
+  // If we don't have a liveSession yet, show an empty pending session
+  const sessionToRender: SessionData =
+    liveSession ?? { participants: [], storyStatus: "pending" };
 
   const participantsToRender = sortParticipants(
     sessionToRender.participants,
@@ -172,25 +160,12 @@ export function PlanningPokerClient({
   );
   const isRevealedToRender = sessionToRender.storyStatus === "revealed";
 
-  const devAverageToRender = liveSession
-    ? averageForRole(sessionToRender, "dev")
-    : devAverage;
-
-  const qaAverageToRender = liveSession
-    ? averageForRole(sessionToRender, "qa")
-    : qaAverage;
+  const devAverageToRender = averageForRole(sessionToRender, "dev");
+  const qaAverageToRender = averageForRole(sessionToRender, "qa");
 
   const currentUser = sessionToRender.participants.find(
     (p) => p.id === userId
   );
-
-  // If the server says we have no vote (e.g., after reset),
-  // clear local selection so UI stays in sync.
-  useEffect(() => {
-    if (!currentUser?.vote && selectedVote !== null) {
-      setSelectedVote(null);
-    }
-  }, [currentUser?.vote, selectedVote]);
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -225,16 +200,9 @@ export function PlanningPokerClient({
   const handleVoteClick = async (vote: Vote) => {
     if (!hasUserProfile || !userId) return;
 
-    // Use the most recent idea of the current vote:
-    // prefer server session if present, otherwise fall back to local state.
-    const currentVoteInSession: Vote | null = currentUser?.vote ?? null;
-    const effectiveCurrent = currentVoteInSession ?? selectedVote;
-
-    // Toggle: clicking the same vote again clears it
-    const newVote: Vote | null = effectiveCurrent === vote ? null : vote;
-
-    // Update local UI immediately
-    setSelectedVote(newVote);
+    // Toggle based purely on server state for this user
+    const currentVote: Vote | null = currentUser?.vote ?? null;
+    const newVote: Vote | null = currentVote === vote ? null : vote;
 
     try {
       await postJson("/api/submit-vote", { roomId, userId, vote: newVote });
@@ -257,8 +225,6 @@ export function PlanningPokerClient({
     startWork(async () => {
       try {
         await postJson("/api/reset", { roomId });
-        // Local reset of selection as well
-        setSelectedVote(null);
       } catch (err) {
         console.error("[reset] failed to reset votes", err);
       }
@@ -284,9 +250,7 @@ export function PlanningPokerClient({
             {/* Vote buttons */}
             <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
               {VOTE_OPTIONS.map((vote) => {
-                // Highlight if either local or server state says this is our vote
-                const isSelected =
-                  selectedVote === vote || currentUser?.vote === vote;
+                const isSelected = currentUser?.vote === vote;
 
                 return (
                   <button
