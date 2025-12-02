@@ -12,10 +12,7 @@ import {
 } from "./planningPokerShared";
 
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
-
-type Props = {
-  roomId: string;
-};
+const ROOM_ID = '000';
 
 function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
@@ -53,7 +50,7 @@ async function postJson(path: string, body: any) {
   }
 }
 
-export function PlanningPokerClient({ roomId }: Props) {
+export function PlanningPokerClient() {
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
@@ -97,7 +94,7 @@ export function PlanningPokerClient({ roomId }: Props) {
       (async () => {
         try {
           await postJson("/api/upsert-participant", {
-            roomId,
+            roomId: ROOM_ID,
             userId: storedId,
             name: storedName,
             role: storedRole,
@@ -114,7 +111,7 @@ export function PlanningPokerClient({ roomId }: Props) {
       setShowProfileModal(true);
       setProfileChecked(true);
     }
-  }, [roomId]);
+  }, []);
 
   // WebSocket: subscribe to session updates
   useEffect(() => {
@@ -127,13 +124,13 @@ export function PlanningPokerClient({ roomId }: Props) {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", roomId, userId }));
+      ws.send(JSON.stringify({ type: "join", roomId: ROOM_ID, userId }));
     };
 
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        if (msg.type === "session" && msg.roomId === roomId) {
+        if (msg.type === "session" && msg.roomId === ROOM_ID) {
           setLiveSession(msg.session as SessionData);
         }
       } catch (err) {
@@ -148,7 +145,7 @@ export function PlanningPokerClient({ roomId }: Props) {
     return () => {
       ws.close();
     };
-  }, [roomId, userId]);
+  }, [userId]);
 
   // If we don't have a liveSession yet, show an empty pending session
   const sessionToRender: SessionData =
@@ -186,7 +183,7 @@ export function PlanningPokerClient({ roomId }: Props) {
 
     try {
       await postJson("/api/upsert-participant", {
-        roomId,
+        roomId: ROOM_ID,
         userId,
         name: trimmedName,
         role: userRole,
@@ -205,7 +202,7 @@ export function PlanningPokerClient({ roomId }: Props) {
     const newVote: Vote | null = currentVote === vote ? null : vote;
 
     try {
-      await postJson("/api/submit-vote", { roomId, userId, vote: newVote });
+      await postJson("/api/submit-vote", { roomId: ROOM_ID, userId, vote: newVote });
     } catch (err) {
       console.error("[vote] failed to submit vote", err);
     }
@@ -214,7 +211,7 @@ export function PlanningPokerClient({ roomId }: Props) {
   const handleRevealClick = () => {
     startWork(async () => {
       try {
-        await postJson("/api/reveal", { roomId });
+        await postJson("/api/reveal", { roomId: ROOM_ID });
       } catch (err) {
         console.error("[reveal] failed to reveal votes", err);
       }
@@ -224,7 +221,7 @@ export function PlanningPokerClient({ roomId }: Props) {
   const handleResetClick = () => {
     startWork(async () => {
       try {
-        await postJson("/api/reset", { roomId });
+        await postJson("/api/reset", { roomId: ROOM_ID });
       } catch (err) {
         console.error("[reset] failed to reset votes", err);
       }
