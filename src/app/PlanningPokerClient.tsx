@@ -12,14 +12,7 @@ import {
 } from "./planningPokerShared";
 
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
-
-type Props = {
-  participants: Participant[];
-  devAverage: string;
-  qaAverage: string;
-  isRevealed: boolean;
-  roomId: string;
-};
+const ROOM_ID = '000';
 
 function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
@@ -53,18 +46,11 @@ async function postJson(path: string, body: any) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    // This will be caught and logged by callers
     throw new Error(`Request to ${path} failed with ${res.status}`);
   }
 }
 
-export function PlanningPokerClient({
-  participants,
-  devAverage,
-  qaAverage,
-  isRevealed,
-  roomId,
-}: Props) {
+export function PlanningPokerClient() {
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
@@ -72,30 +58,15 @@ export function PlanningPokerClient({
   const [profileChecked, setProfileChecked] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  // Live session coming from WebSocket – single source of truth for game state
   const [liveSession, setLiveSession] = useState<SessionData | null>(null);
-  const [selectedVote, setSelectedVote] = useState<Vote | null>(null);
 
   const hasUserProfile =
     !!userId && !!userName && (userRole === "dev" || userRole === "qa");
 
-  useEffect(() => {
-    const sourceSession: SessionData =
-      liveSession ?? {
-        participants,
-        storyStatus: isRevealed ? "revealed" : "pending",
-      };
-
-    if (!userId) {
-      setSelectedVote(null);
-      return;
-    }
-
-    const me = sourceSession.participants.find((p) => p.id === userId);
-    setSelectedVote(me?.vote ?? null);
-  }, [liveSession, participants, userId, isRevealed]);
-
   const [isWorking, startWork] = useTransition();
 
+  // Bootstrap identity from localStorage and auto-join room if profile exists
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -123,7 +94,7 @@ export function PlanningPokerClient({
       (async () => {
         try {
           await postJson("/api/upsert-participant", {
-            roomId,
+            roomId: ROOM_ID,
             userId: storedId,
             name: storedName,
             role: storedRole,
@@ -140,8 +111,9 @@ export function PlanningPokerClient({
       setShowProfileModal(true);
       setProfileChecked(true);
     }
-  }, [roomId]);
+  }, []);
 
+  // WebSocket: subscribe to session updates
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!userId) return;
@@ -152,13 +124,13 @@ export function PlanningPokerClient({
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", roomId, userId }));
+      ws.send(JSON.stringify({ type: "join", roomId: ROOM_ID, userId }));
     };
 
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        if (msg.type === "session" && msg.roomId === roomId) {
+        if (msg.type === "session" && msg.roomId === ROOM_ID) {
           setLiveSession(msg.session as SessionData);
         }
       } catch (err) {
@@ -173,12 +145,11 @@ export function PlanningPokerClient({
     return () => {
       ws.close();
     };
-  }, [roomId, userId]);
+  }, [userId]);
 
-  const sessionToRender: SessionData = liveSession ?? {
-    participants,
-    storyStatus: isRevealed ? "revealed" : "pending",
-  };
+  // If we don't have a liveSession yet, show an empty pending session
+  const sessionToRender: SessionData =
+    liveSession ?? { participants: [], storyStatus: "pending" };
 
   const participantsToRender = sortParticipants(
     sessionToRender.participants,
@@ -186,13 +157,12 @@ export function PlanningPokerClient({
   );
   const isRevealedToRender = sessionToRender.storyStatus === "revealed";
 
-  const devAverageToRender = liveSession
-    ? averageForRole(sessionToRender, "dev")
-    : devAverage;
+  const devAverageToRender = averageForRole(sessionToRender, "dev");
+  const qaAverageToRender = averageForRole(sessionToRender, "qa");
 
-  const qaAverageToRender = liveSession
-    ? averageForRole(sessionToRender, "qa")
-    : qaAverage;
+  const currentUser = sessionToRender.participants.find(
+    (p) => p.id === userId
+  );
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -213,7 +183,7 @@ export function PlanningPokerClient({
 
     try {
       await postJson("/api/upsert-participant", {
-        roomId,
+        roomId: ROOM_ID,
         userId,
         name: trimmedName,
         role: userRole,
@@ -226,9 +196,13 @@ export function PlanningPokerClient({
 
   const handleVoteClick = async (vote: Vote) => {
     if (!hasUserProfile || !userId) return;
-    setSelectedVote(vote);
+
+    // Toggle based purely on server state for this user
+    const currentVote: Vote | null = currentUser?.vote ?? null;
+    const newVote: Vote | null = currentVote === vote ? null : vote;
+
     try {
-      await postJson("/api/submit-vote", { roomId, userId, vote });
+      await postJson("/api/submit-vote", { roomId: ROOM_ID, userId, vote: newVote });
     } catch (err) {
       console.error("[vote] failed to submit vote", err);
     }
@@ -237,7 +211,7 @@ export function PlanningPokerClient({
   const handleRevealClick = () => {
     startWork(async () => {
       try {
-        await postJson("/api/reveal", { roomId });
+        await postJson("/api/reveal", { roomId: ROOM_ID });
       } catch (err) {
         console.error("[reveal] failed to reveal votes", err);
       }
@@ -247,7 +221,7 @@ export function PlanningPokerClient({
   const handleResetClick = () => {
     startWork(async () => {
       try {
-        await postJson("/api/reset", { roomId });
+        await postJson("/api/reset", { roomId: ROOM_ID });
       } catch (err) {
         console.error("[reset] failed to reset votes", err);
       }
@@ -273,7 +247,7 @@ export function PlanningPokerClient({
             {/* Vote buttons */}
             <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
               {VOTE_OPTIONS.map((vote) => {
-                const isSelected = selectedVote === vote;
+                const isSelected = currentUser?.vote === vote;
 
                 return (
                   <button
@@ -281,10 +255,10 @@ export function PlanningPokerClient({
                     type="button"
                     disabled={!hasUserProfile}
                     onClick={() => handleVoteClick(vote)}
-                    className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                    className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
                       isSelected
                         ? "bg-orange text-white shadow-none"
-                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none focus:bg-orange focus:text-white"
+                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none"
                     }`}
                   >
                     {vote === "coffee" ? "☕️" : vote}
@@ -327,6 +301,22 @@ export function PlanningPokerClient({
                       ? "✓"
                       : "—";
 
+                    const hasVote = participant.vote !== null;
+
+                    const badgeClasses = {
+                      gray: "bg-gray-100 text-gray-700 border-gray-300",
+                      green: 'bg-green-100 text-green-800 border-green-300',
+                      white: 'bg-white text-gray-900 border-gray-300'
+                    }
+
+                    const selectedBadgeClasses = !isRevealedToRender
+                      ? hasVote
+                        ? badgeClasses.green
+                        : badgeClasses.gray
+                      : hasVote
+                        ? badgeClasses.white
+                        : badgeClasses.gray;
+
                     const roleLabel =
                       participant.role === "qa"
                         ? "QA"
@@ -349,7 +339,9 @@ export function PlanningPokerClient({
                         <td className="px-6 py-3 font-medium text-gray-900">
                           {participant.name}
                           {isCurrentUser && (
-                            <span className="ml-2 text-xs font-normal text-gray-700">(you)</span>
+                            <span className="ml-2 text-xs font-normal text-gray-700">
+                              (you)
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-3 text-gray-600">
@@ -357,11 +349,7 @@ export function PlanningPokerClient({
                         </td>
                         <td className="px-6 py-3">
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${
-                              isRevealedToRender && participant.vote
-                                ? "bg-white text-gray-900 border-gray-300"
-                                : "bg-gray-100 text-gray-700 border-gray-300"
-                            }`}
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${selectedBadgeClasses}`}
                           >
                             {voteDisplay}
                           </span>
