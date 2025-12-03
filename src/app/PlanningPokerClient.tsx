@@ -351,7 +351,7 @@ export function PlanningPokerClient() {
                         </td>
                         <td className="px-6 py-3">
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${selectedBadgeClasses}`}
+                            className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold border min-w-[2.5rem] ${selectedBadgeClasses}`}
                           >
                             {voteDisplay}
                           </span>
