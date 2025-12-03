@@ -258,7 +258,7 @@ export function PlanningPokerClient() {
                     className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
                       isSelected
                         ? "bg-orange text-white shadow-none"
-                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none"
+                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:border-2 hover:border-[hsl(var(--accent))]"
                     }`}
                   >
                     {vote === "coffee" ? "☕️" : vote}
