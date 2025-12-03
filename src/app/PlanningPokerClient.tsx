@@ -296,7 +296,9 @@ export function PlanningPokerClient() {
                 <tbody className="divide-y divide-gray-100">
                   {participantsToRender.map((participant) => {
                     const voteDisplay = isRevealedToRender
-                      ? participant.vote ?? "—"
+                      ? participant.vote === "coffee"
+                        ? "☕️"
+                        : participant.vote ?? "—"
                       : participant.vote
                       ? "✓"
                       : "—";
@@ -405,6 +407,7 @@ export function PlanningPokerClient() {
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
+                  maxLength={50}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Your name"
                   required
@@ -423,6 +426,7 @@ export function PlanningPokerClient() {
                       checked={userRole === "dev"}
                       onChange={() => setUserRole("dev")}
                       className="h-4 w-4"
+                      required
                     />
                     Dev
                   </label>
