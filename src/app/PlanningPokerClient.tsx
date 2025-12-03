@@ -12,7 +12,7 @@ import {
 } from "./planningPokerShared";
 
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
-const ROOM_ID = '000';
+const ROOM_ID = "000";
 
 function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
@@ -157,6 +157,11 @@ export function PlanningPokerClient() {
   );
   const isRevealedToRender = sessionToRender.storyStatus === "revealed";
 
+  // Disable Reveal when no one has voted
+  const hasAnyVote = sessionToRender.participants.some(
+    (p) => p.vote !== null
+  );
+
   const devAverageToRender = averageForRole(sessionToRender, "dev");
   const qaAverageToRender = averageForRole(sessionToRender, "qa");
 
@@ -202,7 +207,11 @@ export function PlanningPokerClient() {
     const newVote: Vote | null = currentVote === vote ? null : vote;
 
     try {
-      await postJson("/api/submit-vote", { roomId: ROOM_ID, userId, vote: newVote });
+      await postJson("/api/submit-vote", {
+        roomId: ROOM_ID,
+        userId,
+        vote: newVote,
+      });
     } catch (err) {
       console.error("[vote] failed to submit vote", err);
     }
@@ -307,17 +316,17 @@ export function PlanningPokerClient() {
 
                     const badgeClasses = {
                       gray: "bg-gray-100 text-gray-700 border-gray-300",
-                      green: 'bg-green-100 text-green-800 border-green-300',
-                      white: 'bg-white text-gray-900 border-gray-300'
-                    }
+                      green: "bg-green-100 text-green-800 border-green-300",
+                      white: "bg-white text-gray-900 border-gray-300",
+                    };
 
                     const selectedBadgeClasses = !isRevealedToRender
                       ? hasVote
                         ? badgeClasses.green
                         : badgeClasses.gray
                       : hasVote
-                        ? badgeClasses.white
-                        : badgeClasses.gray;
+                      ? badgeClasses.white
+                      : badgeClasses.gray;
 
                     const roleLabel =
                       participant.role === "qa"
@@ -368,7 +377,7 @@ export function PlanningPokerClient() {
               {!isRevealedToRender ? (
                 <button
                   type="button"
-                  disabled={isWorking}
+                  disabled={isWorking || !hasAnyVote}
                   onClick={handleRevealClick}
                   className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
                 >
