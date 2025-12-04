@@ -1,7 +1,7 @@
 // app/PlanningPokerClient.tsx
 "use client";
 
-import { FormEvent, useEffect, useState, useTransition } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   Vote,
   Participant,
@@ -59,14 +59,13 @@ export function PlanningPokerClient() {
 
   const [profileChecked, setProfileChecked] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
 
   // Live session coming from WebSocket – single source of truth for game state
   const [liveSession, setLiveSession] = useState<SessionData | null>(null);
 
   const hasUserProfile =
     !!userId && !!userName && (userRole === "dev" || userRole === "qa");
-
-  const [isWorking, startWork] = useTransition();
 
   // Bootstrap identity from localStorage and auto-join room if profile exists
   useEffect(() => {
@@ -220,24 +219,26 @@ export function PlanningPokerClient() {
     }
   };
 
-  const handleRevealClick = () => {
-    startWork(async () => {
-      try {
-        await postJson("/api/reveal", { roomId: ROOM_ID });
-      } catch (err) {
-        console.error("[reveal] failed to reveal votes", err);
-      }
-    });
+  const handleRevealClick = async () => {
+    setIsWorking(true);
+    try {
+      await postJson("/api/reveal", { roomId: ROOM_ID });
+    } catch (err) {
+      console.error("[reveal] failed to reveal votes", err);
+    } finally {
+      setIsWorking(false);
+    }
   };
 
-  const handleResetClick = () => {
-    startWork(async () => {
-      try {
-        await postJson("/api/reset", { roomId: ROOM_ID });
-      } catch (err) {
-        console.error("[reset] failed to reset votes", err);
-      }
-    });
+  const handleResetClick = async () => {
+    setIsWorking(true);
+    try {
+      await postJson("/api/reset", { roomId: ROOM_ID });
+    } catch (err) {
+      console.error("[reset] failed to reset votes", err);
+    } finally {
+      setIsWorking(false);
+    }
   };
 
   return (
