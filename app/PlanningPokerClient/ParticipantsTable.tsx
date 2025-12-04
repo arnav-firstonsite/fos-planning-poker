@@ -1,6 +1,6 @@
 // app/components/ParticipantsTable.tsx
 
-import type { Participant } from "../planningPokerShared";
+import { Participant, rolePriority, voteValue } from "../planningPokerShared";
 
 type ParticipantsTableProps = {
   participants: Participant[];
@@ -12,11 +12,34 @@ function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
 }
 
+function sortParticipants(
+  participants: Participant[],
+  isRevealed: boolean
+): Participant[] {
+  return participants.slice().sort((a, b) => {
+    const roleDiff = rolePriority(a) - rolePriority(b);
+    if (roleDiff !== 0) return roleDiff;
+
+    if (!isRevealed) {
+      return a.name.localeCompare(b.name);
+    }
+
+    const voteDiff = voteValue(b.vote) - voteValue(a.vote);
+    if (voteDiff !== 0) return voteDiff;
+
+    return a.name.localeCompare(b.name);
+  });
+}
+
 export function ParticipantsTable({
-  participants,
   currentUserId,
+  participants,
   isRevealed,
 }: ParticipantsTableProps) {
+    const participantsToRender = sortParticipants(
+    participants,
+    isRevealed
+  );
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-100 text-left text-sm text-gray-700">
@@ -30,7 +53,7 @@ export function ParticipantsTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {participants.map((participant) => {
+          {participantsToRender.map((participant) => {
             const voteDisplay = isRevealed
               ? participant.vote === "coffee"
                 ? "☕️"

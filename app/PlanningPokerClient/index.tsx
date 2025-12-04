@@ -4,11 +4,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   Vote,
-  Participant,
   SessionData,
   averageForRole,
-  rolePriority,
-  voteValue,
 } from "../planningPokerShared";
 import { PlanningPokerHeader } from "./PlanningPokerHeader";
 import { VoteControls } from "./VoteControls";
@@ -19,27 +16,6 @@ import { ProfileModal } from "./ProfileModal";
 
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
 const ROOM_ID = "000";
-
-function sortParticipants(
-  participants: Participant[],
-  storyStatus: SessionData["storyStatus"]
-): Participant[] {
-  const isRevealed = storyStatus === "revealed";
-
-  return participants.slice().sort((a, b) => {
-    const roleDiff = rolePriority(a) - rolePriority(b);
-    if (roleDiff !== 0) return roleDiff;
-
-    if (!isRevealed) {
-      return a.name.localeCompare(b.name);
-    }
-
-    const voteDiff = voteValue(b.vote) - voteValue(a.vote);
-    if (voteDiff !== 0) return voteDiff;
-
-    return a.name.localeCompare(b.name);
-  });
-}
 
 async function postJson(path: string, body: any) {
   const res = await fetch(path, {
@@ -152,10 +128,6 @@ export function PlanningPokerClient() {
   const sessionToRender: SessionData =
     liveSession ?? { participants: [], storyStatus: "pending" };
 
-  const participantsToRender = sortParticipants(
-    sessionToRender.participants,
-    sessionToRender.storyStatus
-  );
   const isRevealedToRender = sessionToRender.storyStatus === "revealed";
 
   // Disable Reveal when no one has voted
@@ -262,8 +234,8 @@ export function PlanningPokerClient() {
             />
 
             <ParticipantsTable
-              participants={participantsToRender}
               currentUserId={userId}
+              participants={sessionToRender.participants}
               isRevealed={isRevealedToRender}
             />
 
