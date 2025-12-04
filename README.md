@@ -21,12 +21,16 @@ Users join a single room, pick a role (Dev or QA), cast votes, reveal/reset as a
 - ✅ **Voting UX**
   - Fibonacci-ish values + `?` + `☕️`
   - Button stays highlighted for your selected vote
-  - You can change your vote any time (even after reveal)
+  - You can change or clear your vote any time (even after reveal)
 - 📊 **Per-role averages**
   - Separate Dev and QA averages once votes are revealed
 - 👋 **Presence management**
   - Multiple tabs for the same user are treated as one participant
   - Closing your last tab removes you from the room for everyone else
+- 🧹 **Validation & safety**
+  - Name is required and cannot be just whitespace
+  - Role selection is required
+  - Reveal is disabled until at least one vote exists
 
 ---
 
@@ -36,46 +40,59 @@ Users join a single room, pick a role (Dev or QA), cast votes, reveal/reset as a
 - **UI:** React 19, Tailwind CSS 4
 - **Runtime:** Node 18+
 - **WebSockets:** [`ws`](https://github.com/websockets/ws)
-- **Dev runtime:** [`tsx`](https://github.com/esbuild-kit/tsx) for `server.ts`
+- **Dev runtime:** [`tsx`](https://github.com/esbuild-kit/tsx) for the custom HTTP server
 - **Language:** TypeScript
 
 ---
 
 ## Architecture Overview
 
-The app uses a **custom Node server** (`server.ts`) that runs:
+The app uses a **custom Node HTTP server** that runs:
 
 - The Next.js app
 - A WebSocket server at `/ws`
 - JSON HTTP endpoints under `/api/*`
 
+### Server Layout
+
+- **HTTP + Next server:** `server/httpServer.ts`
+  - Creates a Node HTTP server
+  - Prepares and mounts Next.js
+  - Dispatches `/api/*` requests to JSON handlers
+  - Forwards all other requests to Next’s request handler
+- **WebSocket server:** `server/wsServer.ts`
+  - Attached to the same HTTP server in `httpServer.ts`
+  - Handles `/ws` connections
+  - Manages join/leave and session broadcasts
+
 ### Room & Session Model
 
-- There is currently a **single room**, with ID `"000"`:
-
-  ```ts
-  // app/page.tsx
-  const ROOM_ID = "000";
-  ```
-
+- There is currently a **single room** with ID `"000"`:
+  - The ID is hardcoded in the client (see `PlanningPokerClient`)
 - Session state is held **in memory** on the server:
-  - `SessionData` and helpers live in `src/app/planningPokerShared.ts`
-  - A `Map<string, SessionData>` stores all room sessions
+  - Shared types & helpers live in `app/planningPokerShared.ts`
+  - The server keeps a `Map<string, SessionData>` for rooms
   - This means:
     - No persistent storage
     - Sessions reset when the process restarts
 
+#### SessionData
+
+Conceptually, a session looks like:
+
+- `storyStatus: "pending" | "revealed"`
+- `participants: Participant[]`, where each participant has:
+  - `id` (stable `userId`)
+  - `name`
+  - `role` (`"dev"` or `"qa"`)
+  - `vote` (`Vote | null`)
+
+Votes are constrained to the allowed `Vote` union (e.g. `"0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "☕"`).
+
 ### WebSockets
 
-- Implemented in `src/server/wsServer.ts`
-- Attached to the same HTTP server as Next in `server.ts`:
-
-  ```ts
-  import { attachWebSocketServer } from "./src/server/wsServer";
-
-  attachWebSocketServer(server);
-  ```
-
+- Implemented in `server/wsServer.ts`
+- Attached in `server/httpServer.ts`
 - Path: `/ws`
 - Protocol:
   - `ws://` in dev
@@ -89,20 +106,20 @@ The app uses a **custom Node server** (`server.ts`) that runs:
     - Someone votes
     - Story is revealed
     - Story is reset
-    - A user disconnects (last tab closed)
+    - A user disconnects (last tab for that `userId` closes)
 
 ### HTTP API
 
-Endpoints are implemented directly in `server.ts`:
+Endpoints are implemented in `server/httpServer.ts` and operate on the shared in-memory session map.
 
 - `POST /api/upsert-participant`
   - Body: `{ roomId, userId, name, role }`
-  - Validates payload
+  - Validates payload (roomId, non-empty name, valid role)
   - Adds or updates the participant in the session
   - Broadcasts updated session to `/ws` clients
 - `POST /api/submit-vote`
   - Body: `{ roomId, userId, vote }`
-  - Validates vote against allowed values
+  - Validates vote against allowed values (or `null` to clear)
   - Updates that user’s vote in the session
   - Broadcasts updated session
 - `POST /api/reveal`
@@ -116,13 +133,30 @@ Endpoints are implemented directly in `server.ts`:
 
 ### Client-Side App
 
-- Main client component: `src/app/PlanningPokerClient.tsx`
-- Responsibilities:
-  - Manage local user profile (ID, name, role)
-  - Call the HTTP API endpoints
-  - Connect to WebSocket and maintain `liveSession`
-  - Derive sorted participant list and averages for rendering
-  - Show a modal to collect profile if missing/invalid
+The main client tree lives under `app/PlanningPokerClient/` and is imported from `app/page.tsx`.
+
+Responsibilities of the client:
+
+- Manage local user profile (ID, name, role)
+  - `userId` stored in `localStorage` as `planningPokerUserId`
+  - Name + role in `planningPokerUserName` and `planningPokerUserRole`
+- Call the HTTP API endpoints for:
+  - Upserting participants
+  - Submitting votes
+  - Revealing
+  - Resetting
+- Connect to WebSocket and maintain `liveSession`
+- Derive sorted participant list and per-role averages for rendering
+- Show a modal to collect profile if missing/invalid
+
+The UI is split into small presentational components scoped to the feature:
+
+- `PlanningPokerClient/PlanningPokerHeader.tsx`
+- `PlanningPokerClient/VoteControls.tsx`
+- `PlanningPokerClient/AveragesBar.tsx`
+- `PlanningPokerClient/ParticipantsTable.tsx`
+- `PlanningPokerClient/SessionActions.tsx`
+- `PlanningPokerClient/ProfileModal.tsx`
 
 ---
 
@@ -133,7 +167,7 @@ Endpoints are implemented directly in `server.ts`:
 - Node 18+
 - npm (or another compatible package manager)
 
-### Install
+### Install dependencies
 
 ```bash
 npm install
@@ -148,7 +182,7 @@ npm run dev
 This runs:
 
 ```bash
-tsx server.ts
+tsx server/httpServer.ts
 ```
 
 Which:
@@ -182,7 +216,7 @@ NODE_ENV=production npm start
 This runs:
 
 ```bash
-NODE_ENV=production tsx server.ts
+NODE_ENV=production tsx server/httpServer.ts
 ```
 
 and serves the built app at:
@@ -196,11 +230,13 @@ and serves the built app at:
 From `package.json`:
 
 ```json
-"scripts": {
-  "dev": "tsx server.ts",
-  "build": "next build",
-  "start": "NODE_ENV=production tsx server.ts",
-  "lint": "eslint"
+{
+  "scripts": {
+    "dev": "tsx server/httpServer.ts",
+    "build": "next build",
+    "start": "NODE_ENV=production tsx server/httpServer.ts",
+    "lint": "eslint"
+  }
 }
 ```
 
@@ -211,7 +247,7 @@ From `package.json`:
 - **In-memory state only**
   - Sessions and participants are not persisted; restarting the server clears everything.
 - **Single room**
-  - The app currently uses a fixed `ROOM_ID = "000"`. Adding multiple rooms would require:
+  - The app currently uses a fixed room ID `"000"`. Adding multiple rooms would require:
     - Generating room IDs
     - Routing based on path or query (e.g. `/rooms/[roomId]`)
 - **Not horizontally scalable yet**
