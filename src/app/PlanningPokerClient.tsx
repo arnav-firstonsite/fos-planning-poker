@@ -173,11 +173,12 @@ export function PlanningPokerClient() {
     event.preventDefault();
 
     const trimmedName = userName.trim();
-    if (!trimmedName || !(userRole === "dev" || userRole === "qa")) {
+
+    if (!userId) {
       return;
     }
 
-    if (!userId) {
+    if (!(userRole === "dev" || userRole === "qa")) {
       return;
     }
 
@@ -417,6 +418,8 @@ export function PlanningPokerClient() {
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   maxLength={50}
+                  pattern=".*\S.*"
+                  title="Name cannot be blank or only spaces"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Your name"
                   required
