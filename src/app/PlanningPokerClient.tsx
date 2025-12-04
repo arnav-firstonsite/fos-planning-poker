@@ -12,7 +12,7 @@ import {
 } from "./planningPokerShared";
 
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
-const ROOM_ID = '000';
+const ROOM_ID = "000";
 
 function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
@@ -157,6 +157,11 @@ export function PlanningPokerClient() {
   );
   const isRevealedToRender = sessionToRender.storyStatus === "revealed";
 
+  // Disable Reveal when no one has voted
+  const hasAnyVote = sessionToRender.participants.some(
+    (p) => p.vote !== null
+  );
+
   const devAverageToRender = averageForRole(sessionToRender, "dev");
   const qaAverageToRender = averageForRole(sessionToRender, "qa");
 
@@ -168,11 +173,12 @@ export function PlanningPokerClient() {
     event.preventDefault();
 
     const trimmedName = userName.trim();
-    if (!trimmedName || !(userRole === "dev" || userRole === "qa")) {
+
+    if (!userId) {
       return;
     }
 
-    if (!userId) {
+    if (!(userRole === "dev" || userRole === "qa")) {
       return;
     }
 
@@ -202,7 +208,11 @@ export function PlanningPokerClient() {
     const newVote: Vote | null = currentVote === vote ? null : vote;
 
     try {
-      await postJson("/api/submit-vote", { roomId: ROOM_ID, userId, vote: newVote });
+      await postJson("/api/submit-vote", {
+        roomId: ROOM_ID,
+        userId,
+        vote: newVote,
+      });
     } catch (err) {
       console.error("[vote] failed to submit vote", err);
     }
@@ -258,7 +268,7 @@ export function PlanningPokerClient() {
                     className={`rounded-md border border-[hsl(var(--accent))]/30 px-3 py-2 text-sm font-semibold transition hover:-translate-y-0.5 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
                       isSelected
                         ? "bg-orange text-white shadow-none"
-                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:bg-orange hover:text-white hover:shadow-none"
+                        : "bg-white text-[hsl(var(--accent))] shadow-sm hover:text-dark-blue hover:shadow-none"
                     }`}
                   >
                     {vote === "coffee" ? "☕️" : vote}
@@ -296,7 +306,9 @@ export function PlanningPokerClient() {
                 <tbody className="divide-y divide-gray-100">
                   {participantsToRender.map((participant) => {
                     const voteDisplay = isRevealedToRender
-                      ? participant.vote ?? "—"
+                      ? participant.vote === "coffee"
+                        ? "☕️"
+                        : participant.vote ?? "—"
                       : participant.vote
                       ? "✓"
                       : "—";
@@ -305,17 +317,17 @@ export function PlanningPokerClient() {
 
                     const badgeClasses = {
                       gray: "bg-gray-100 text-gray-700 border-gray-300",
-                      green: 'bg-green-100 text-green-800 border-green-300',
-                      white: 'bg-white text-gray-900 border-gray-300'
-                    }
+                      green: "bg-green-100 text-green-800 border-green-300",
+                      white: "bg-white text-gray-900 border-gray-300",
+                    };
 
                     const selectedBadgeClasses = !isRevealedToRender
                       ? hasVote
                         ? badgeClasses.green
                         : badgeClasses.gray
                       : hasVote
-                        ? badgeClasses.white
-                        : badgeClasses.gray;
+                      ? badgeClasses.white
+                      : badgeClasses.gray;
 
                     const roleLabel =
                       participant.role === "qa"
@@ -349,7 +361,7 @@ export function PlanningPokerClient() {
                         </td>
                         <td className="px-6 py-3">
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${selectedBadgeClasses}`}
+                            className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold border min-w-[2.5rem] ${selectedBadgeClasses}`}
                           >
                             {voteDisplay}
                           </span>
@@ -366,7 +378,7 @@ export function PlanningPokerClient() {
               {!isRevealedToRender ? (
                 <button
                   type="button"
-                  disabled={isWorking}
+                  disabled={isWorking || !hasAnyVote}
                   onClick={handleRevealClick}
                   className="rounded-md bg-foreground text-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-dark-blue focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
                 >
@@ -405,6 +417,9 @@ export function PlanningPokerClient() {
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
+                  maxLength={50}
+                  pattern=".*\S.*"
+                  title="Name cannot be blank or only spaces"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Your name"
                   required
@@ -423,6 +438,7 @@ export function PlanningPokerClient() {
                       checked={userRole === "dev"}
                       onChange={() => setUserRole("dev")}
                       className="h-4 w-4"
+                      required
                     />
                     Dev
                   </label>
