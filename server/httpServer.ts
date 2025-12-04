@@ -1,12 +1,12 @@
 // server.ts
 import http, { IncomingMessage, ServerResponse } from "http";
 import next from "next";
-import { attachWebSocketServer, broadcastToRoom } from "./src/server/wsServer";
+import { attachWebSocketServer, broadcastToRoom } from "./wsServer";
 import {
   updateSession,
   getSession,
   Vote,
-} from "./src/app/planningPokerShared";
+} from "../app/planningPokerShared";
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
