@@ -1,7 +1,7 @@
 // src/server/wsServer.ts
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server as HttpServer } from "http";
-import { updateSession, getSession } from "../app/planningPokerShared";
+import { updateSession, getSession, sortSession } from "../app/planningPokerShared";
 
 type RoomId = string;
 type RoomsMap = Map<RoomId, Set<WebSocket>>;
@@ -34,12 +34,13 @@ export function attachWebSocketServer(server: HttpServer) {
           socketInfo.set(socket, { roomId, userId });
 
           const session = getSession(roomId);
+          const sortedSession = sortSession(session);
 
           socket.send(
             JSON.stringify({
               type: "session",
               roomId,
-              session,
+              session: sortedSession,
             })
           );
         }
@@ -81,11 +82,12 @@ export function attachWebSocketServer(server: HttpServer) {
           }));
 
           const session = getSession(roomId);
+          const sortedSession = sortSession(session);
 
           broadcastToRoom(roomId, {
             type: "session",
             roomId,
-            session,
+            session: sortedSession,
           });
         } catch (err) {
           console.error("[ws] error during disconnect cleanup", {

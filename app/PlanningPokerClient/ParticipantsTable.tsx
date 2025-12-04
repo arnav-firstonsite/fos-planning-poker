@@ -1,6 +1,6 @@
-// app/components/ParticipantsTable.tsx
+// app/PlanningPokerClient/ParticipantsTable.tsx
 
-import type { Participant } from "../planningPokerShared";
+import { Participant } from "../planningPokerShared";
 
 type ParticipantsTableProps = {
   participants: Participant[];
@@ -13,8 +13,8 @@ function capitalizeFirstLetter(str: string): string {
 }
 
 export function ParticipantsTable({
-  participants,
   currentUserId,
+  participants,
   isRevealed,
 }: ParticipantsTableProps) {
   return (

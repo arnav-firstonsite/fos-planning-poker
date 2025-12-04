@@ -6,6 +6,7 @@ import {
   updateSession,
   getSession,
   Vote,
+  sortSession,
 } from "../app/planningPokerShared";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -107,11 +108,12 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       });
 
       const session = getSession(roomId);
+      const sortedSession = sortSession(session);
 
       broadcastToRoom(roomId, {
         type: "session",
         roomId,
-        session,
+        session: sortedSession,
       });
 
       res.statusCode = 204;
@@ -191,11 +193,12 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       });
 
       const session = getSession(trimmedRoomId);
+      const sortedSession = sortSession(session);
 
       broadcastToRoom(trimmedRoomId, {
         type: "session",
         roomId: trimmedRoomId,
-        session,
+        session: sortedSession,
       });
 
       res.statusCode = 204;
@@ -237,11 +240,12 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       }));
 
       const session = getSession(roomId);
+      const sortedSession = sortSession(session);
 
       broadcastToRoom(roomId, {
         type: "session",
         roomId,
-        session,
+        session: sortedSession,
       });
 
       res.statusCode = 204;
@@ -287,11 +291,12 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
       }));
 
       const session = getSession(roomId);
+      const sortedSession = sortSession(session);
 
       broadcastToRoom(roomId, {
         type: "session",
         roomId,
-        session,
+        session: sortedSession,
       });
 
       res.statusCode = 204;

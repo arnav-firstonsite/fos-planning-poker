@@ -62,3 +62,26 @@ export function averageForRole(session: SessionData, role: Participant["role"]) 
   const avg = votes.reduce((sum, v) => sum + v, 0) / votes.length;
   return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1);
 }
+
+export function sortSession(session: SessionData): SessionData {
+  const isRevealed = session.storyStatus === "revealed";
+
+  const sortedParticipants = session.participants.slice().sort((a, b) => {
+    const roleDiff = rolePriority(a) - rolePriority(b);
+    if (roleDiff !== 0) return roleDiff;
+
+    if (!isRevealed) {
+      return a.name.localeCompare(b.name);
+    }
+
+    const voteDiff = voteValue(b.vote) - voteValue(a.vote);
+    if (voteDiff !== 0) return voteDiff;
+
+    return a.name.localeCompare(b.name);
+  });
+
+  return {
+    ...session,
+    participants: sortedParticipants,
+  };
+}

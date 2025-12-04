@@ -1,14 +1,11 @@
-// app/PlanningPokerClient.tsx
+// app/PlanningPokerClient/index.tsx
 "use client";
 
-import { FormEvent, useEffect, useState, useTransition } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   Vote,
-  Participant,
   SessionData,
   averageForRole,
-  rolePriority,
-  voteValue,
 } from "../planningPokerShared";
 import { PlanningPokerHeader } from "./PlanningPokerHeader";
 import { VoteControls } from "./VoteControls";
@@ -19,27 +16,6 @@ import { ProfileModal } from "./ProfileModal";
 
 const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
 const ROOM_ID = "000";
-
-function sortParticipants(
-  participants: Participant[],
-  storyStatus: SessionData["storyStatus"]
-): Participant[] {
-  const isRevealed = storyStatus === "revealed";
-
-  return participants.slice().sort((a, b) => {
-    const roleDiff = rolePriority(a) - rolePriority(b);
-    if (roleDiff !== 0) return roleDiff;
-
-    if (!isRevealed) {
-      return a.name.localeCompare(b.name);
-    }
-
-    const voteDiff = voteValue(b.vote) - voteValue(a.vote);
-    if (voteDiff !== 0) return voteDiff;
-
-    return a.name.localeCompare(b.name);
-  });
-}
 
 async function postJson(path: string, body: any) {
   const res = await fetch(path, {
@@ -59,14 +35,13 @@ export function PlanningPokerClient() {
 
   const [profileChecked, setProfileChecked] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
 
   // Live session coming from WebSocket – single source of truth for game state
   const [liveSession, setLiveSession] = useState<SessionData | null>(null);
 
   const hasUserProfile =
     !!userId && !!userName && (userRole === "dev" || userRole === "qa");
-
-  const [isWorking, startWork] = useTransition();
 
   // Bootstrap identity from localStorage and auto-join room if profile exists
   useEffect(() => {
@@ -153,10 +128,6 @@ export function PlanningPokerClient() {
   const sessionToRender: SessionData =
     liveSession ?? { participants: [], storyStatus: "pending" };
 
-  const participantsToRender = sortParticipants(
-    sessionToRender.participants,
-    sessionToRender.storyStatus
-  );
   const isRevealedToRender = sessionToRender.storyStatus === "revealed";
 
   // Disable Reveal when no one has voted
@@ -220,24 +191,26 @@ export function PlanningPokerClient() {
     }
   };
 
-  const handleRevealClick = () => {
-    startWork(async () => {
-      try {
-        await postJson("/api/reveal", { roomId: ROOM_ID });
-      } catch (err) {
-        console.error("[reveal] failed to reveal votes", err);
-      }
-    });
+  const handleRevealClick = async () => {
+    setIsWorking(true);
+    try {
+      await postJson("/api/reveal", { roomId: ROOM_ID });
+    } catch (err) {
+      console.error("[reveal] failed to reveal votes", err);
+    } finally {
+      setIsWorking(false);
+    }
   };
 
-  const handleResetClick = () => {
-    startWork(async () => {
-      try {
-        await postJson("/api/reset", { roomId: ROOM_ID });
-      } catch (err) {
-        console.error("[reset] failed to reset votes", err);
-      }
-    });
+  const handleResetClick = async () => {
+    setIsWorking(true);
+    try {
+      await postJson("/api/reset", { roomId: ROOM_ID });
+    } catch (err) {
+      console.error("[reset] failed to reset votes", err);
+    } finally {
+      setIsWorking(false);
+    }
   };
 
   return (
@@ -261,8 +234,8 @@ export function PlanningPokerClient() {
             />
 
             <ParticipantsTable
-              participants={participantsToRender}
               currentUserId={userId}
+              participants={sessionToRender.participants}
               isRevealed={isRevealedToRender}
             />
 
