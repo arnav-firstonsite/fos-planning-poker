@@ -1,4 +1,4 @@
-// app/PlanningPokerClient.tsx
+// app/PlanningPokerClient/index.tsx
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";

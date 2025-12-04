@@ -1,6 +1,6 @@
-// app/components/ParticipantsTable.tsx
+// app/PlanningPokerClient/ParticipantsTable.tsx
 
-import { Participant, rolePriority, voteValue } from "../planningPokerShared";
+import { Participant } from "../planningPokerShared";
 
 type ParticipantsTableProps = {
   participants: Participant[];
@@ -12,34 +12,11 @@ function capitalizeFirstLetter(str: string): string {
   return str[0].toUpperCase() + str.slice(1);
 }
 
-function sortParticipants(
-  participants: Participant[],
-  isRevealed: boolean
-): Participant[] {
-  return participants.slice().sort((a, b) => {
-    const roleDiff = rolePriority(a) - rolePriority(b);
-    if (roleDiff !== 0) return roleDiff;
-
-    if (!isRevealed) {
-      return a.name.localeCompare(b.name);
-    }
-
-    const voteDiff = voteValue(b.vote) - voteValue(a.vote);
-    if (voteDiff !== 0) return voteDiff;
-
-    return a.name.localeCompare(b.name);
-  });
-}
-
 export function ParticipantsTable({
   currentUserId,
   participants,
   isRevealed,
 }: ParticipantsTableProps) {
-    const participantsToRender = sortParticipants(
-    participants,
-    isRevealed
-  );
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-100 text-left text-sm text-gray-700">
@@ -53,7 +30,7 @@ export function ParticipantsTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {participantsToRender.map((participant) => {
+          {participants.map((participant) => {
             const voteDisplay = isRevealed
               ? participant.vote === "coffee"
                 ? "☕️"
