@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { postJson } from "../../planningPokerShared";
+import { postJson } from "./apiClient";
 
 /**
  * Handles:

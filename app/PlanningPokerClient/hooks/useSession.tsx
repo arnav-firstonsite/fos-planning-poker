@@ -3,8 +3,8 @@ import {
   Vote,
   SessionData,
   averageForRole,
-  postJson
 } from "../../planningPokerShared";
+import { postJson } from "./apiClient";
 
 /**
  * Handles:

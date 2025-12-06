@@ -17,17 +17,6 @@ export type SessionData = {
 // In-memory store keyed by roomId
 const sessions = new Map<string, SessionData>();
 
-export async function postJson(path: string, body: any) {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(`Request to ${path} failed with ${res.status}`);
-  }
-}
-
 export function getSession(roomId: string): SessionData {
   const existing = sessions.get(roomId);
   if (!existing) {
@@ -46,13 +35,13 @@ export function updateSession(roomId: string, update: (session: SessionData) => 
   return next;
 }
 
-export function voteValue(vote: Vote | null) {
+function voteValue(vote: Vote | null) {
   if (vote === null) return -1;
   const numeric = Number(vote);
   return Number.isNaN(numeric) ? -1 : numeric;
 }
 
-export function rolePriority(p: Participant) {
+function rolePriority(p: Participant) {
   if (p.role === "dev") return 0;
   if (p.role === "qa") return 1;
   return 2;
