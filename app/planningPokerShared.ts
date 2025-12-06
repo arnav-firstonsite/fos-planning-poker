@@ -17,6 +17,17 @@ export type SessionData = {
 // In-memory store keyed by roomId
 const sessions = new Map<string, SessionData>();
 
+export async function postJson(path: string, body: any) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`Request to ${path} failed with ${res.status}`);
+  }
+}
+
 export function getSession(roomId: string): SessionData {
   const existing = sessions.get(roomId);
   if (!existing) {
