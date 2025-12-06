@@ -1,6 +1,6 @@
 // app/PlanningPokerClient/ParticipantsTable.tsx
 
-import { Participant } from "../planningPokerShared";
+import { Participant } from "../../planningPokerShared";
 
 type ParticipantsTableProps = {
   participants: Participant[];

@@ -35,13 +35,13 @@ export function updateSession(roomId: string, update: (session: SessionData) => 
   return next;
 }
 
-export function voteValue(vote: Vote | null) {
+function voteValue(vote: Vote | null) {
   if (vote === null) return -1;
   const numeric = Number(vote);
   return Number.isNaN(numeric) ? -1 : numeric;
 }
 
-export function rolePriority(p: Participant) {
+function rolePriority(p: Participant) {
   if (p.role === "dev") return 0;
   if (p.role === "qa") return 1;
   return 2;

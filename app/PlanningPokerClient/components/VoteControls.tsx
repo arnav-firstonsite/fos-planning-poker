@@ -1,23 +1,24 @@
 // app/components/VoteControls.tsx
 
-import type { Vote } from "../planningPokerShared";
+import type { Vote } from "../../planningPokerShared";
 
 type VoteControlsProps = {
-  options: Vote[];
   selectedVote: Vote | null;
   disabled: boolean;
   onVoteClick: (vote: Vote) => void;
 };
 
+const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
+
 export function VoteControls({
-  options,
   selectedVote,
   disabled,
   onVoteClick,
 }: VoteControlsProps) {
+  
   return (
     <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
-      {options.map((vote) => {
+      {VOTE_OPTIONS.map((vote) => {
         const isSelected = selectedVote === vote;
 
         return (

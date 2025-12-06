@@ -1,217 +1,43 @@
 // app/PlanningPokerClient/index.tsx
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import {
-  Vote,
-  SessionData,
-  averageForRole,
-} from "../planningPokerShared";
-import { PlanningPokerHeader } from "./PlanningPokerHeader";
-import { VoteControls } from "./VoteControls";
-import { AveragesBar } from "./AveragesBar";
-import { ParticipantsTable } from "./ParticipantsTable";
-import { SessionActions } from "./SessionActions";
-import { ProfileModal } from "./ProfileModal";
+import { useSession } from "./hooks/useSession";
+import { useUserProfile } from "./hooks/useUserProfile";
+import { PlanningPokerHeader } from "./components/PlanningPokerHeader";
+import { VoteControls } from "./components/VoteControls";
+import { AveragesBar } from "./components/AveragesBar";
+import { ParticipantsTable } from "./components/ParticipantsTable";
+import { SessionActions } from "./components/SessionActions";
+import { ProfileModal } from "./components/ProfileModal";
 
-const VOTE_OPTIONS: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "?", "coffee"];
 const ROOM_ID = "000";
 
-async function postJson(path: string, body: any) {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(`Request to ${path} failed with ${res.status}`);
-  }
-}
-
 export function PlanningPokerClient() {
-  const [userId, setUserId] = useState<string>("");
-  const [userName, setUserName] = useState<string>("");
-  const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");
+  const {
+    userId,
+    userName,
+    userRole,
+    setUserName,
+    setUserRole,
+    profileChecked,
+    showProfileModal,
+    setShowProfileModal,
+    hasUserProfile,
+    handleProfileSubmit,
+  } = useUserProfile(ROOM_ID);
 
-  const [profileChecked, setProfileChecked] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [isWorking, setIsWorking] = useState(false);
-
-  // Live session coming from WebSocket – single source of truth for game state
-  const [liveSession, setLiveSession] = useState<SessionData | null>(null);
-
-  const hasUserProfile =
-    !!userId && !!userName && (userRole === "dev" || userRole === "qa");
-
-  // Bootstrap identity from localStorage and auto-join room if profile exists
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    let storedId = window.localStorage.getItem("planningPokerUserId");
-    if (!storedId) {
-      storedId =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      window.localStorage.setItem("planningPokerUserId", storedId);
-    }
-    setUserId(storedId);
-
-    const storedName =
-      window.localStorage.getItem("planningPokerUserName") ?? "";
-    const storedRole = window.localStorage.getItem("planningPokerUserRole");
-
-    const hasStoredProfile =
-      !!storedName && (storedRole === "dev" || storedRole === "qa");
-
-    if (storedName) setUserName(storedName);
-    if (storedRole === "dev" || storedRole === "qa") setUserRole(storedRole);
-
-    if (hasStoredProfile) {
-      (async () => {
-        try {
-          await postJson("/api/upsert-participant", {
-            roomId: ROOM_ID,
-            userId: storedId,
-            name: storedName,
-            role: storedRole,
-          });
-          setShowProfileModal(false);
-        } catch (err) {
-          console.error("[profile] failed to auto-join room", err);
-          setShowProfileModal(true);
-        } finally {
-          setProfileChecked(true);
-        }
-      })();
-    } else {
-      setShowProfileModal(true);
-      setProfileChecked(true);
-    }
-  }, []);
-
-  // WebSocket: subscribe to session updates
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!userId) return;
-
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://${window.location.host}/ws`;
-
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", roomId: ROOM_ID, userId }));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "session" && msg.roomId === ROOM_ID) {
-          setLiveSession(msg.session as SessionData);
-        }
-      } catch (err) {
-        console.error("[ws] bad message", err, { raw: event.data });
-      }
-    };
-
-    ws.onerror = (event) => {
-      console.error("[ws] socket error", event);
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [userId]);
-
-  // If we don't have a liveSession yet, show an empty pending session
-  const sessionToRender: SessionData =
-    liveSession ?? { participants: [], storyStatus: "pending" };
-
-  const isRevealedToRender = sessionToRender.storyStatus === "revealed";
-
-  // Disable Reveal when no one has voted
-  const hasAnyVote = sessionToRender.participants.some(
-    (p) => p.vote !== null
-  );
-
-  const devAverageToRender = averageForRole(sessionToRender, "dev");
-  const qaAverageToRender = averageForRole(sessionToRender, "qa");
-
-  const currentUser = sessionToRender.participants.find(
-    (p) => p.id === userId
-  );
-
-  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const trimmedName = userName.trim();
-
-    if (!userId) {
-      return;
-    }
-
-    if (!(userRole === "dev" || userRole === "qa")) {
-      return;
-    }
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("planningPokerUserName", trimmedName);
-      window.localStorage.setItem("planningPokerUserRole", userRole);
-    }
-
-    try {
-      await postJson("/api/upsert-participant", {
-        roomId: ROOM_ID,
-        userId,
-        name: trimmedName,
-        role: userRole,
-      });
-      setShowProfileModal(false);
-    } catch (err) {
-      console.error("[profile] failed to save profile", err);
-    }
-  };
-
-  const handleVoteClick = async (vote: Vote) => {
-    if (!hasUserProfile || !userId) return;
-
-    // Toggle based purely on server state for this user
-    const currentVote: Vote | null = currentUser?.vote ?? null;
-    const newVote: Vote | null = currentVote === vote ? null : vote;
-
-    try {
-      await postJson("/api/submit-vote", {
-        roomId: ROOM_ID,
-        userId,
-        vote: newVote,
-      });
-    } catch (err) {
-      console.error("[vote] failed to submit vote", err);
-    }
-  };
-
-  const handleRevealClick = async () => {
-    setIsWorking(true);
-    try {
-      await postJson("/api/reveal", { roomId: ROOM_ID });
-    } catch (err) {
-      console.error("[reveal] failed to reveal votes", err);
-    } finally {
-      setIsWorking(false);
-    }
-  };
-
-  const handleResetClick = async () => {
-    setIsWorking(true);
-    try {
-      await postJson("/api/reset", { roomId: ROOM_ID });
-    } catch (err) {
-      console.error("[reset] failed to reset votes", err);
-    } finally {
-      setIsWorking(false);
-    }
-  };
+  const {
+    session,
+    isRevealed,
+    hasAnyVote,
+    devAverage,
+    qaAverage,
+    currentUser,
+    isWorking,
+    submitVote,
+    reveal,
+    reset,
+  } = useSession(ROOM_ID, userId, hasUserProfile);
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-light-grey font-sans">
@@ -221,30 +47,29 @@ export function PlanningPokerClient() {
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
             <VoteControls
-              options={VOTE_OPTIONS}
               selectedVote={currentUser?.vote ?? null}
               disabled={!hasUserProfile}
-              onVoteClick={handleVoteClick}
+              onVoteClick={submitVote}
             />
 
             <AveragesBar
-              isRevealed={isRevealedToRender}
-              devAverage={devAverageToRender}
-              qaAverage={qaAverageToRender}
+              isRevealed={isRevealed}
+              devAverage={devAverage}
+              qaAverage={qaAverage}
             />
 
             <ParticipantsTable
               currentUserId={userId}
-              participants={sessionToRender.participants}
-              isRevealed={isRevealedToRender}
+              participants={session.participants}
+              isRevealed={isRevealed}
             />
 
             <SessionActions
-              isRevealed={isRevealedToRender}
+              isRevealed={isRevealed}
               canReveal={hasAnyVote && !isWorking}
               canReset={!isWorking}
-              onReveal={handleRevealClick}
-              onReset={handleResetClick}
+              onReveal={reveal}
+              onReset={reset}
             />
           </div>
         </div>
