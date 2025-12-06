@@ -12,7 +12,7 @@ import {
  * - derived session data (isRevealed, hasAnyVote, averages, currentUser)
  * - vote / reveal / reset mutations
  */
-export default function usePlanningPokerSession(
+export function useSession(
   roomId: string,
   userId: string,
   hasUserProfile: boolean

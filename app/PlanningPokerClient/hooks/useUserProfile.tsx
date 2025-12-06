@@ -9,7 +9,7 @@ import { postJson } from "../../planningPokerShared";
  * - auto-join room if stored profile exists
  * - profile submit logic
  */
-export default function useUserProfile(roomId: string) {
+export function useUserProfile(roomId: string) {
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<"dev" | "qa" | "">("");

@@ -1,8 +1,8 @@
 // app/PlanningPokerClient/index.tsx
 "use client";
 
-import useSession from "./hooks/useSession"
-import useUserProfile from "./hooks/useUserProfile"
+import { useSession } from "./hooks/useSession";
+import { useUserProfile } from "./hooks/useUserProfile";
 import { PlanningPokerHeader } from "./PlanningPokerHeader";
 import { VoteControls } from "./VoteControls";
 import { AveragesBar } from "./AveragesBar";
@@ -12,18 +12,7 @@ import { ProfileModal } from "./ProfileModal";
 
 const ROOM_ID = "000";
 
-async function postJson(path: string, body: any) {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(`Request to ${path} failed with ${res.status}`);
-  }
-}
-
-export default function PlanningPokerClient() {
+export function PlanningPokerClient() {
   const {
     userId,
     userName,
