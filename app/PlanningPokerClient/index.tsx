@@ -3,12 +3,12 @@
 
 import { useSession } from "./hooks/useSession";
 import { useUserProfile } from "./hooks/useUserProfile";
-import { PlanningPokerHeader } from "./PlanningPokerHeader";
-import { VoteControls } from "./VoteControls";
-import { AveragesBar } from "./AveragesBar";
-import { ParticipantsTable } from "./ParticipantsTable";
-import { SessionActions } from "./SessionActions";
-import { ProfileModal } from "./ProfileModal";
+import { PlanningPokerHeader } from "./components/PlanningPokerHeader";
+import { VoteControls } from "./components/VoteControls";
+import { AveragesBar } from "./components/AveragesBar";
+import { ParticipantsTable } from "./components/ParticipantsTable";
+import { SessionActions } from "./components/SessionActions";
+import { ProfileModal } from "./components/ProfileModal";
 
 const ROOM_ID = "000";
 
