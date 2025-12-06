@@ -17,16 +17,25 @@ export function ParticipantsTable({
   participants,
   isRevealed,
 }: ParticipantsTableProps) {
+  const paddingY =
+    participants.length > 14
+      ? "py-1.5"
+      : participants.length > 9
+      ? "py-2"
+      : "py-3";
+
+  const thClassNames = `px-6 ${ paddingY } font-semibold text-gray-800`;
+      
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-100 text-left text-sm text-gray-700">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-6 py-3 font-semibold text-gray-800">
+            <th className={thClassNames}>
               Participant
             </th>
-            <th className="px-6 py-3 font-semibold text-gray-800">Role</th>
-            <th className="px-6 py-3 font-semibold text-gray-800">Vote</th>
+            <th className={thClassNames}>Role</th>
+            <th className={thClassNames}>Vote</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
@@ -74,7 +83,7 @@ export function ParticipantsTable({
                 key={participant.id}
                 className={`${baseRowTone} hover:brightness-95`}
               >
-                <td className="px-6 py-3 font-medium text-gray-900">
+                <td className={`px-6 ${ paddingY } font-medium text-gray-900`}>
                   {participant.name}
                   {isCurrentUser && (
                     <span className="ml-2 text-xs font-normal text-gray-700">
@@ -82,8 +91,8 @@ export function ParticipantsTable({
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-3 text-gray-600">{roleLabel}</td>
-                <td className="px-6 py-3">
+                <td className={`px-6 ${ paddingY } text-gray-600`}>{roleLabel}</td>
+                <td className={`px-6 ${ paddingY }`}>
                   <span
                     className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold border min-w-[2.5rem] ${selectedBadgeClasses}`}
                   >
