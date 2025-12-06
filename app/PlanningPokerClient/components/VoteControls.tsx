@@ -1,6 +1,6 @@
 // app/components/VoteControls.tsx
 
-import type { Vote } from "../planningPokerShared";
+import type { Vote } from "../../planningPokerShared";
 
 type VoteControlsProps = {
   selectedVote: Vote | null;
