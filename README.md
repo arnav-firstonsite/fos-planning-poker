@@ -87,7 +87,7 @@ Conceptually, a session looks like:
   - `role` (`"dev"` or `"qa"`)
   - `vote` (`Vote | null`)
 
-Votes are constrained to the allowed `Vote` union (e.g. `"0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "☕"`).
+Votes are constrained to the allowed `Vote` union (e.g. `"0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "coffee"`).
 
 ### WebSockets
 
@@ -149,14 +149,21 @@ Responsibilities of the client:
 - Derive sorted participant list and per-role averages for rendering
 - Show a modal to collect profile if missing/invalid
 
+Main component is in `PlanningPokerClient/index.tsx`
+
+Stateful client logic is encapsulated in custom hooks under the `PlanningPokerClient` feature folder:
+
+- `PlanningPokerClient/hooks/useUserProfile.ts` – manages local identity (userId, name, role), localStorage syncing, and profile modal behavior, including auto-joining the room when a valid profile exists.
+- `PlanningPokerClient/hooks/useSession.ts` – manages the WebSocket connection, keeps a live `SessionData` snapshot, derives per-role averages and current user, and sends commands via the HTTP API (submit vote, reveal, reset).
+
 The UI is split into small presentational components scoped to the feature:
 
-- `PlanningPokerClient/PlanningPokerHeader.tsx`
-- `PlanningPokerClient/VoteControls.tsx`
-- `PlanningPokerClient/AveragesBar.tsx`
-- `PlanningPokerClient/ParticipantsTable.tsx`
-- `PlanningPokerClient/SessionActions.tsx`
-- `PlanningPokerClient/ProfileModal.tsx`
+- `PlanningPokerClient/components/PlanningPokerHeader.tsx`
+- `PlanningPokerClient/components/VoteControls.tsx`
+- `PlanningPokerClient/components/AveragesBar.tsx`
+- `PlanningPokerClient/components/ParticipantsTable.tsx`
+- `PlanningPokerClient/components/SessionActions.tsx`
+- `PlanningPokerClient/components/ProfileModal.tsx`
 
 ---
 
