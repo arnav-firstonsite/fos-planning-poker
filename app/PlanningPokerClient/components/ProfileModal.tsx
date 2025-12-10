@@ -1,4 +1,4 @@
-// app/components/ProfileModal.tsx
+// app/PlanningPokerClient/components/ProfileModal.tsx
 
 import type { FormEvent } from "react";
 
@@ -8,6 +8,7 @@ type ProfileModalProps = {
   onNameChange: (name: string) => void;
   onRoleChange: (role: "dev" | "qa") => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onCancel: () => void;
 };
 
 export function ProfileModal({
@@ -16,6 +17,7 @@ export function ProfileModal({
   onNameChange,
   onRoleChange,
   onSubmit,
+  onCancel,
 }: ProfileModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -39,6 +41,7 @@ export function ProfileModal({
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Your name"
               required
+              autoFocus
             />
           </div>
           <div className="text-left">
@@ -46,26 +49,26 @@ export function ProfileModal({
               Role
             </span>
             <div className="flex gap-3">
-              <label className="flex items-center gap-1 text-sm text-gray-700">
+              <label className="flex items-center gap-1 text-sm text-gray-700 cursor-pointer">
                 <input
                   type="radio"
                   name="role"
                   value="dev"
                   checked={role === "dev"}
                   onChange={() => onRoleChange("dev")}
-                  className="h-4 w-4"
+                  className="h-4 w-4 cursor-pointer"
                   required
                 />
                 Dev
               </label>
-              <label className="flex items-center gap-1 text-sm text-gray-700">
+              <label className="flex items-center gap-1 text-sm text-gray-700 cursor-pointer">
                 <input
                   type="radio"
                   name="role"
                   value="qa"
                   checked={role === "qa"}
                   onChange={() => onRoleChange("qa")}
-                  className="h-4 w-4"
+                  className="h-4 w-4 cursor-pointer"
                 />
                 QA
               </label>
@@ -73,8 +76,15 @@ export function ProfileModal({
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Cancel
+            </button>
+            <button
               type="submit"
-              className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-dark-blue focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-dark-blue hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               Save
             </button>
