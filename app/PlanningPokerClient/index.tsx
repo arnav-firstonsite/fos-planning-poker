@@ -82,6 +82,7 @@ export function PlanningPokerClient() {
           onNameChange={setUserName}
           onRoleChange={setUserRole}
           onSubmit={handleProfileSubmit}
+          onCancel={() => setShowProfileModal(false)}
         />
       )}
     </div>
