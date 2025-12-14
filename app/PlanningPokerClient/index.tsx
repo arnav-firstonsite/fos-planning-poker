@@ -5,7 +5,7 @@ import { useSession } from "./hooks/useSession";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { PlanningPokerHeader } from "./components/PlanningPokerHeader";
 import { VoteControls } from "./components/VoteControls";
-import { AveragesBar } from "./components/AveragesBar";
+import { Charts } from "./components/Charts";
 import { ParticipantsTable } from "./components/ParticipantsTable";
 import { SessionActions } from "./components/SessionActions";
 import { ProfileModal } from "./components/ProfileModal";
@@ -30,8 +30,6 @@ export function PlanningPokerClient() {
     session,
     isRevealed,
     hasAnyVote,
-    devAverage,
-    qaAverage,
     currentUser,
     isWorking,
     submitVote,
@@ -49,14 +47,10 @@ export function PlanningPokerClient() {
             <VoteControls
               selectedVote={currentUser?.vote ?? null}
               disabled={!hasUserProfile}
-              onVoteClick={submitVote}
+            onVoteClick={submitVote}
             />
 
-            <AveragesBar
-              isRevealed={isRevealed}
-              devAverage={devAverage}
-              qaAverage={qaAverage}
-            />
+            <Charts session={session}/>
 
             <ParticipantsTable
               currentUserId={userId}
