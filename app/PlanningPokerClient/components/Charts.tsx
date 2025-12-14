@@ -31,10 +31,7 @@ export function Charts({ session }: ChartsProps) {
   }
 
   return (
-    <div
-      id="charts"
-      className="flex w-full flex-row flex-wrap items-center justify-center gap-4 px-4 text-center pt-4"
-    >
+    <div className="flex w-full flex-row flex-wrap items-center justify-center gap-4 px-4 text-center pt-4">
       <div className="flex-1 min-w-0">
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-700">
           Dev
