@@ -45,7 +45,7 @@ export function Charts({ session }: ChartsProps) {
             style={{ fontFamily: "inherit" }}
           >
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <Bar dataKey="count" fill="#3182CE" />
+            <Bar dataKey="count" fill="var(--color-dark-blue)" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -59,7 +59,7 @@ export function Charts({ session }: ChartsProps) {
             style={{ fontFamily: "inherit" }}
           >
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <Bar dataKey="count" fill="#ff8f1c" />
+            <Bar dataKey="count" fill="var(--color-orange)" />
           </BarChart>
         </ResponsiveContainer>
       </div>
