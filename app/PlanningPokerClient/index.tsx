@@ -47,7 +47,7 @@ export function PlanningPokerClient() {
             <VoteControls
               selectedVote={currentUser?.vote ?? null}
               disabled={!hasUserProfile}
-            onVoteClick={submitVote}
+              onVoteClick={submitVote}
             />
 
             <Charts session={session}/>

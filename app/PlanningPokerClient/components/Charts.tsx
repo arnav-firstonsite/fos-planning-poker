@@ -21,6 +21,28 @@ function transformSession(session: SessionData, role: "dev" | "qa"): ChartDatum[
   return Object.entries(counts).map(([name, count]) => ({ name, count }));
 }
 
+type RoleChartProps = {
+  title: string;
+  data: ChartDatum[];
+  barColor: string;
+};
+
+function RoleChart({ title, data, barColor }: RoleChartProps) {
+  return (
+    <div className="flex-1 min-w-0">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-700">
+        {title}
+      </div>
+      <ResponsiveContainer width="100%" height={80}>
+        <BarChart data={data} style={{ fontFamily: "inherit" }}>
+          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+          <Bar dataKey="count" fill={barColor} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 type ChartsProps = {
   session: SessionData;
 };
@@ -32,34 +54,8 @@ export function Charts({ session }: ChartsProps) {
 
   return (
     <div className="flex w-full flex-row flex-wrap items-center justify-center gap-4 px-4 text-center pt-4">
-      <div className="flex-1 min-w-0">
-        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-700">
-          Dev
-        </div>
-        <ResponsiveContainer width="100%" height={80}>
-          <BarChart
-            data={transformSession(session, "dev")}
-            style={{ fontFamily: "inherit" }}
-          >
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <Bar dataKey="count" fill="var(--color-dark-blue)" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-700">
-          QA
-        </div>
-        <ResponsiveContainer width="100%" height={80}>
-          <BarChart
-            data={transformSession(session, "qa")}
-            style={{ fontFamily: "inherit" }}
-          >
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <Bar dataKey="count" fill="var(--color-orange)" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <RoleChart title="Dev" data={transformSession(session, 'dev')} barColor="var(--color-dark-blue)" />
+      <RoleChart title="QA" data={transformSession(session, 'qa')} barColor="var(--color-orange)" />
     </div>
   );
 }
