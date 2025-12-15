@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 /*
 - #00205b: dark blue
 - #3182CE: light blue
@@ -15,12 +15,11 @@
 
 @theme {
   --color-dark-blue: #00205b;
-  --color-light-blue: #3182CE;
+  --color-light-blue: #3182ce;
   --color-orange: #ff8f1c;
   --color-white: #ffffff;
   --color-light-grey: #f3f1ef;
   --color-dark-grey: #54555a;
-
 }
 
 @theme inline {
@@ -28,7 +27,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-
 }
 
 /* @media (prefers-color-scheme: dark) {

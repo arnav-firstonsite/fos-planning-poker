@@ -1,10 +1,6 @@
-import { useEffect, useState } from "react";
-import {
-  Vote,
-  SessionData,
-  averageForRole,
-} from "../../planningPokerShared";
-import { postJson } from "./apiClient";
+import { useEffect, useState } from 'react'
+import { Vote, SessionData, averageForRole } from '../../planningPokerShared'
+import { postJson } from './apiClient'
 
 /**
  * Handles:
@@ -12,97 +8,95 @@ import { postJson } from "./apiClient";
  * - derived session data (isRevealed, hasAnyVote, averages, currentUser)
  * - vote / reveal / reset mutations
  */
-export function useSession(
-  roomId: string,
-  userId: string,
-  hasUserProfile: boolean
-) {
-  const [liveSession, setLiveSession] = useState<SessionData | null>(null);
-  const [isWorking, setIsWorking] = useState(false);
+export function useSession(roomId: string, userId: string, hasUserProfile: boolean) {
+  const [liveSession, setLiveSession] = useState<SessionData | null>(null)
+  const [isWorking, setIsWorking] = useState(false)
 
   // WebSocket: subscribe to session updates
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!userId) return;
+    if (typeof window === 'undefined') return
+    if (!userId) return
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://${window.location.host}/ws`;
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const wsUrl = `${protocol}://${window.location.host}/ws`
 
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", roomId, userId }));
-    };
+      ws.send(JSON.stringify({ type: 'join', roomId, userId }))
+    }
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "session" && msg.roomId === roomId) {
-          setLiveSession(msg.session as SessionData);
+        const msg = JSON.parse(event.data)
+        if (msg.type === 'session' && msg.roomId === roomId) {
+          setLiveSession(msg.session as SessionData)
         }
       } catch (err) {
-        console.error("[ws] bad message", err, { raw: event.data });
+        console.error('[ws] bad message', err, { raw: event.data })
       }
-    };
+    }
 
     ws.onerror = (event) => {
-      console.error("[ws] socket error", event);
-    };
+      console.error('[ws] socket error', event)
+    }
 
     return () => {
-      ws.close();
-    };
-  }, [roomId, userId]);
+      ws.close()
+    }
+  }, [roomId, userId])
 
-  const session: SessionData =
-    liveSession ?? { participants: [], storyStatus: "pending" };
+  const session: SessionData = liveSession ?? {
+    participants: [],
+    storyStatus: 'pending',
+  }
 
-  const isRevealed = session.storyStatus === "revealed";
-  const hasAnyVote = session.participants.some((p) => p.vote !== null);
+  const isRevealed = session.storyStatus === 'revealed'
+  const hasAnyVote = session.participants.some((p) => p.vote !== null)
 
-  const devAverage = averageForRole(session, "dev");
-  const qaAverage = averageForRole(session, "qa");
+  const devAverage = averageForRole(session, 'dev')
+  const qaAverage = averageForRole(session, 'qa')
 
-  const currentUser = session.participants.find((p) => p.id === userId) ?? null;
+  const currentUser = session.participants.find((p) => p.id === userId) ?? null
 
   const submitVote = async (vote: Vote) => {
-    if (!hasUserProfile || !userId) return;
+    if (!hasUserProfile || !userId) return
 
-    const currentVote: Vote | null = currentUser?.vote ?? null;
-    const newVote: Vote | null = currentVote === vote ? null : vote;
+    const currentVote: Vote | null = currentUser?.vote ?? null
+    const newVote: Vote | null = currentVote === vote ? null : vote
 
     try {
-      await postJson("/api/submit-vote", {
+      await postJson('/api/submit-vote', {
         roomId,
         userId,
         vote: newVote,
-      });
+      })
     } catch (err) {
-      console.error("[vote] failed to submit vote", err);
+      console.error('[vote] failed to submit vote', err)
     }
-  };
+  }
 
   const reveal = async () => {
-    setIsWorking(true);
+    setIsWorking(true)
     try {
-      await postJson("/api/reveal", { roomId });
+      await postJson('/api/reveal', { roomId })
     } catch (err) {
-      console.error("[reveal] failed to reveal votes", err);
+      console.error('[reveal] failed to reveal votes', err)
     } finally {
-      setIsWorking(false);
+      setIsWorking(false)
     }
-  };
+  }
 
   const reset = async () => {
-    setIsWorking(true);
+    setIsWorking(true)
     try {
-      await postJson("/api/reset", { roomId });
+      await postJson('/api/reset', { roomId })
     } catch (err) {
-      console.error("[reset] failed to reset votes", err);
+      console.error('[reset] failed to reset votes', err)
     } finally {
-      setIsWorking(false);
+      setIsWorking(false)
     }
-  };
+  }
 
   return {
     session,
@@ -115,5 +109,5 @@ export function useSession(
     submitVote,
     reveal,
     reset,
-  };
+  }
 }

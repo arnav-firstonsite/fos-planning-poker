@@ -1,12 +1,12 @@
 // app/components/SessionActions.tsx
 
 type SessionActionsProps = {
-  isRevealed: boolean;
-  canReveal: boolean;
-  canReset: boolean;
-  onReveal: () => void;
-  onReset: () => void;
-};
+  isRevealed: boolean
+  canReveal: boolean
+  canReset: boolean
+  onReveal: () => void
+  onReset: () => void
+}
 
 export function SessionActions({
   isRevealed,
@@ -37,5 +37,5 @@ export function SessionActions({
         </button>
       )}
     </div>
-  );
+  )
 }

@@ -1,15 +1,15 @@
 // app/PlanningPokerClient/components/ProfileModal.tsx
 
-import type { FormEvent } from "react";
+import type { FormEvent } from 'react'
 
 type ProfileModalProps = {
-  name: string;
-  role: "dev" | "qa" | "";
-  onNameChange: (name: string) => void;
-  onRoleChange: (role: "dev" | "qa") => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onCancel: () => void;
-};
+  name: string
+  role: 'dev' | 'qa' | ''
+  onNameChange: (name: string) => void
+  onRoleChange: (role: 'dev' | 'qa') => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onCancel: () => void
+}
 
 export function ProfileModal({
   name,
@@ -28,9 +28,7 @@ export function ProfileModal({
         </p>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="text-left">
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Name
-            </label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
             <input
               type="text"
               value={name}
@@ -45,17 +43,15 @@ export function ProfileModal({
             />
           </div>
           <div className="text-left">
-            <span className="mb-1 block text-sm font-medium text-gray-700">
-              Role
-            </span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">Role</span>
             <div className="flex gap-3">
               <label className="flex items-center gap-1 text-sm text-gray-700 cursor-pointer">
                 <input
                   type="radio"
                   name="role"
                   value="dev"
-                  checked={role === "dev"}
-                  onChange={() => onRoleChange("dev")}
+                  checked={role === 'dev'}
+                  onChange={() => onRoleChange('dev')}
                   className="h-4 w-4 cursor-pointer"
                   required
                 />
@@ -66,8 +62,8 @@ export function ProfileModal({
                   type="radio"
                   name="role"
                   value="qa"
-                  checked={role === "qa"}
-                  onChange={() => onRoleChange("qa")}
+                  checked={role === 'qa'}
+                  onChange={() => onRoleChange('qa')}
                   className="h-4 w-4 cursor-pointer"
                 />
                 QA
@@ -92,5 +88,5 @@ export function ProfileModal({
         </form>
       </div>
     </div>
-  );
+  )
 }

@@ -1,16 +1,16 @@
 // app/PlanningPokerClient/index.tsx
-"use client";
+'use client'
 
-import { useSession } from "./hooks/useSession";
-import { useUserProfile } from "./hooks/useUserProfile";
-import { PlanningPokerHeader } from "./components/PlanningPokerHeader";
-import { VoteControls } from "./components/VoteControls";
-import { Charts } from "./components/Charts";
-import { ParticipantsTable } from "./components/ParticipantsTable";
-import { SessionActions } from "./components/SessionActions";
-import { ProfileModal } from "./components/ProfileModal";
+import { useSession } from './hooks/useSession'
+import { useUserProfile } from './hooks/useUserProfile'
+import { PlanningPokerHeader } from './components/PlanningPokerHeader'
+import { VoteControls } from './components/VoteControls'
+import { Charts } from './components/Charts'
+import { ParticipantsTable } from './components/ParticipantsTable'
+import { SessionActions } from './components/SessionActions'
+import { ProfileModal } from './components/ProfileModal'
 
-const ROOM_ID = "000";
+const ROOM_ID = '000'
 
 export function PlanningPokerClient() {
   const {
@@ -24,18 +24,10 @@ export function PlanningPokerClient() {
     setShowProfileModal,
     hasUserProfile,
     handleProfileSubmit,
-  } = useUserProfile(ROOM_ID);
+  } = useUserProfile(ROOM_ID)
 
-  const {
-    session,
-    isRevealed,
-    hasAnyVote,
-    currentUser,
-    isWorking,
-    submitVote,
-    reveal,
-    reset,
-  } = useSession(ROOM_ID, userId, hasUserProfile);
+  const { session, isRevealed, hasAnyVote, currentUser, isWorking, submitVote, reveal, reset } =
+    useSession(ROOM_ID, userId, hasUserProfile)
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-light-grey font-sans">
@@ -50,7 +42,7 @@ export function PlanningPokerClient() {
               onVoteClick={submitVote}
             />
 
-            <Charts session={session}/>
+            <Charts session={session} />
 
             <ParticipantsTable
               currentUserId={userId}
@@ -80,5 +72,5 @@ export function PlanningPokerClient() {
         />
       )}
     </div>
-  );
+  )
 }
