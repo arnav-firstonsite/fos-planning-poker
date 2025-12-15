@@ -1,12 +1,12 @@
-import { BarChart, XAxis, Bar, ResponsiveContainer } from "recharts"
-import type { SessionData } from "../../planningPokerShared"
+import { BarChart, XAxis, Bar, ResponsiveContainer } from 'recharts'
+import type { SessionData } from '../../planningPokerShared'
 
 type ChartDatum = {
   name: string
   count: number
 }
 
-function transformSession(session: SessionData, role: "dev" | "qa"): ChartDatum[] {
+function transformSession(session: SessionData, role: 'dev' | 'qa'): ChartDatum[] {
   const counts: Record<string, number> = {
     '0': 0,
     '1': 0,
@@ -21,7 +21,7 @@ function transformSession(session: SessionData, role: "dev" | "qa"): ChartDatum[
     if (participant.role !== role) continue
 
     const vote = participant.vote
-    if (vote === null || vote === "coffee" || vote === "?") continue
+    if (vote === null || vote === 'coffee' || vote === '?') continue
 
     counts[vote] = (counts[vote] ?? 0) + 1
   }
@@ -30,9 +30,9 @@ function transformSession(session: SessionData, role: "dev" | "qa"): ChartDatum[
 }
 
 type RoleChartProps = {
-  title: string;
-  data: ChartDatum[];
-  barColor: string;
+  title: string
+  data: ChartDatum[]
+  barColor: string
 }
 
 function RoleChart({ title, data, barColor }: RoleChartProps) {
@@ -42,7 +42,7 @@ function RoleChart({ title, data, barColor }: RoleChartProps) {
         {title}
       </div>
       <ResponsiveContainer width="100%" height={100}>
-        <BarChart data={data} style={{ fontFamily: "inherit" }}>
+        <BarChart data={data} style={{ fontFamily: 'inherit' }}>
           <XAxis dataKey="name" tick={{ fontSize: 12 }} />
           <Bar dataKey="count" fill={barColor} />
         </BarChart>
@@ -52,17 +52,21 @@ function RoleChart({ title, data, barColor }: RoleChartProps) {
 }
 
 type ChartsProps = {
-  session: SessionData;
+  session: SessionData
 }
 
 export function Charts({ session }: ChartsProps) {
-  if (session.storyStatus === "pending") {
+  if (session.storyStatus === 'pending') {
     return null
   }
 
   return (
     <div className="flex w-full flex-row flex-wrap items-center justify-center gap-4 px-4 text-center pt-4">
-      <RoleChart title="Dev" data={transformSession(session, 'dev')} barColor="var(--color-dark-blue)" />
+      <RoleChart
+        title="Dev"
+        data={transformSession(session, 'dev')}
+        barColor="var(--color-dark-blue)"
+      />
       <RoleChart title="QA" data={transformSession(session, 'qa')} barColor="var(--color-orange)" />
     </div>
   )

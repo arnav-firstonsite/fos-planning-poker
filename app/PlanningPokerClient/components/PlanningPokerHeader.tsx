@@ -1,8 +1,8 @@
 // app/components/PlanningPokerHeader.tsx
 
 type PlanningPokerHeaderProps = {
-  onChangeProfile: () => void;
-};
+  onChangeProfile: () => void
+}
 
 export function PlanningPokerHeader({ onChangeProfile }: PlanningPokerHeaderProps) {
   return (
@@ -16,5 +16,5 @@ export function PlanningPokerHeader({ onChangeProfile }: PlanningPokerHeaderProp
         Change Profile
       </button>
     </header>
-  );
+  )
 }

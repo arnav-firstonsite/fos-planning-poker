@@ -41,7 +41,7 @@ If this works, you’re ready to deploy.
 - The app listens on:
 
 ```ts
-const port = parseInt(process.env.PORT || "3000", 10);
+const port = parseInt(process.env.PORT || '3000', 10)
 ```
 
 - WebSocket endpoint is always relative to the host: `/ws`
@@ -79,7 +79,6 @@ Push to GitHub (or GitLab/Bitbucket) if you haven’t already.
 2. Click **New → Web Service**.
 3. Connect the repo that contains this app.
 4. Set:
-
    - **Environment**: Node
    - **Build Command**:
 
@@ -155,7 +154,6 @@ The pattern is the same for most Node platforms:
    ```
 
 3. Ensure:
-
    - `PORT` is set (the platform usually does this automatically).
    - No reverse proxy strips WebSocket upgrade headers.
    - HTTP and WS are served from the same host.
