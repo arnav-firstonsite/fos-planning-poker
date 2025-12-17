@@ -6,7 +6,7 @@ type ChartDatum = {
   count: number
 }
 
-function transformSession(session: SessionData, role: 'dev' | 'qa'): ChartDatum[] {
+function sessionToChartData(session: SessionData, role: 'dev' | 'qa'): ChartDatum[] {
   const counts: Record<string, number> = {
     '0': 0,
     '1': 0,
@@ -64,10 +64,14 @@ export function Charts({ session }: ChartsProps) {
     <div className="flex w-full flex-row flex-wrap items-center justify-center gap-4 px-4 text-center pt-4">
       <RoleChart
         title="Dev"
-        data={transformSession(session, 'dev')}
+        data={sessionToChartData(session, 'dev')}
         barColor="var(--color-dark-blue)"
       />
-      <RoleChart title="QA" data={transformSession(session, 'qa')} barColor="var(--color-orange)" />
+      <RoleChart
+        title="QA"
+        data={sessionToChartData(session, 'qa')}
+        barColor="var(--color-orange)"
+      />
     </div>
   )
 }
