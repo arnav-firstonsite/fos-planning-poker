@@ -28,7 +28,9 @@ export function ProfileModal({
         </p>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="text-left">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Name
+            </label>
             <input
               type="text"
               value={name}
@@ -43,7 +45,9 @@ export function ProfileModal({
             />
           </div>
           <div className="text-left">
-            <span className="mb-1 block text-sm font-medium text-gray-700">Role</span>
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              Role
+            </span>
             <div className="flex gap-3">
               <label className="flex items-center gap-1 text-sm text-gray-700 cursor-pointer">
                 <input

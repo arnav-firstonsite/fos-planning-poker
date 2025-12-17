@@ -6,7 +6,10 @@ type ChartDatum = {
   count: number
 }
 
-function sessionToChartData(session: SessionData, role: 'dev' | 'qa'): ChartDatum[] {
+function sessionToChartData(
+  session: SessionData,
+  role: 'dev' | 'qa',
+): ChartDatum[] {
   const counts: Record<string, number> = {
     '0': 0,
     '1': 0,

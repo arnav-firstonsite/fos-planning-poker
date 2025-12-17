@@ -1,7 +1,11 @@
 // src/server/wsServer.ts
 import { WebSocketServer, WebSocket } from 'ws'
 import type { Server as HttpServer } from 'http'
-import { updateSession, getSession, sortSession } from '../app/planningPokerShared'
+import {
+  updateSession,
+  getSession,
+  sortSession,
+} from '../app/planningPokerShared'
 
 type RoomId = string
 type RoomsMap = Map<RoomId, Set<WebSocket>>
@@ -23,7 +27,11 @@ type ClientMessage = JoinMessage // extendable later
 function isJoinMessage(msg: unknown): msg is JoinMessage {
   if (!msg || typeof msg !== 'object') return false
   const m = msg as Record<string, unknown>
-  return m.type === 'join' && typeof m.roomId === 'string' && typeof m.userId === 'string'
+  return (
+    m.type === 'join' &&
+    typeof m.roomId === 'string' &&
+    typeof m.userId === 'string'
+  )
 }
 
 function getSortedSession(roomId: RoomId) {

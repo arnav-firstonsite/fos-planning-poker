@@ -30,10 +30,12 @@ export function useUserProfile(roomId: string) {
     }
     setUserId(storedId)
 
-    const storedName = window.localStorage.getItem('planningPokerUserName') ?? ''
+    const storedName =
+      window.localStorage.getItem('planningPokerUserName') ?? ''
     const storedRole = window.localStorage.getItem('planningPokerUserRole')
 
-    const hasStoredProfile = !!storedName && (storedRole === 'dev' || storedRole === 'qa')
+    const hasStoredProfile =
+      !!storedName && (storedRole === 'dev' || storedRole === 'qa')
 
     if (storedName) setUserName(storedName)
     if (storedRole === 'dev' || storedRole === 'qa') setUserRole(storedRole)
@@ -61,7 +63,8 @@ export function useUserProfile(roomId: string) {
     }
   }, [roomId])
 
-  const hasUserProfile = !!userId && !!userName && (userRole === 'dev' || userRole === 'qa')
+  const hasUserProfile =
+    !!userId && !!userName && (userRole === 'dev' || userRole === 'qa')
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

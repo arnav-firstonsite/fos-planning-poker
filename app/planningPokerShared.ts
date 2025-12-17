@@ -28,7 +28,10 @@ export function getSession(roomId: string): SessionData {
   return existing
 }
 
-export function updateSession(roomId: string, update: (session: SessionData) => SessionData) {
+export function updateSession(
+  roomId: string,
+  update: (session: SessionData) => SessionData,
+) {
   const current = getSession(roomId)
   const next = update(current)
   sessions.set(roomId, next)
@@ -47,7 +50,10 @@ function rolePriority(p: Participant) {
   return 2
 }
 
-export function averageForRole(session: SessionData, role: Participant['role']) {
+export function averageForRole(
+  session: SessionData,
+  role: Participant['role'],
+) {
   const votes = session.participants
     .filter((p) => p.role === role)
     .map((p) => p.vote)

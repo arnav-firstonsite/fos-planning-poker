@@ -2,7 +2,12 @@
 import http, { IncomingMessage, ServerResponse } from 'http'
 import next from 'next'
 import { attachWebSocketServer, broadcastToRoom } from './wsServer'
-import { updateSession, getSession, Vote, sortSession } from '../app/planningPokerShared'
+import {
+  updateSession,
+  getSession,
+  Vote,
+  sortSession,
+} from '../app/planningPokerShared'
 
 const app = next({ dev: process.env.NODE_ENV !== 'production' })
 const handle = app.getRequestHandler()
@@ -27,7 +32,17 @@ type RoomOnlyBody = {
 }
 
 // Single place for allowed votes
-const ALLOWED_VOTES: Vote[] = ['0', '1', '2', '3', '5', '8', '13', '?', 'coffee']
+const ALLOWED_VOTES: Vote[] = [
+  '0',
+  '1',
+  '2',
+  '3',
+  '5',
+  '8',
+  '13',
+  '?',
+  'coffee',
+]
 
 // ----- Helpers -----
 function parseJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -77,7 +92,10 @@ function broadcastRoomUpdate(roomId: string) {
 }
 
 // ----- Route Handlers -----
-async function handleUpsertParticipant(req: IncomingMessage, res: ServerResponse) {
+async function handleUpsertParticipant(
+  req: IncomingMessage,
+  res: ServerResponse,
+) {
   let body: unknown
   try {
     body = await parseJsonBody(req)
@@ -86,7 +104,8 @@ async function handleUpsertParticipant(req: IncomingMessage, res: ServerResponse
     return sendJson(res, 400, { error: 'Invalid JSON' })
   }
 
-  const { roomId, userId, name, role } = (body ?? {}) as Partial<UpsertParticipantBody>
+  const { roomId, userId, name, role } = (body ??
+    {}) as Partial<UpsertParticipantBody>
 
   if (
     typeof roomId !== 'string' ||
@@ -107,13 +126,18 @@ async function handleUpsertParticipant(req: IncomingMessage, res: ServerResponse
 
   try {
     updateSession(trimmedRoomId, (session) => {
-      const existingIndex = session.participants.findIndex((p) => p.id === trimmedUserId)
+      const existingIndex = session.participants.findIndex(
+        (p) => p.id === trimmedUserId,
+      )
 
       const updatedParticipant = {
         id: trimmedUserId,
         name: trimmedName,
         role,
-        vote: existingIndex === -1 ? null : session.participants[existingIndex].vote,
+        vote:
+          existingIndex === -1
+            ? null
+            : session.participants[existingIndex].vote,
       }
 
       let participants
@@ -177,7 +201,9 @@ async function handleSubmitVote(req: IncomingMessage, res: ServerResponse) {
 
   try {
     updateSession(trimmedRoomId, (session) => {
-      const hasParticipant = session.participants.some((p) => p.id === trimmedUserId)
+      const hasParticipant = session.participants.some(
+        (p) => p.id === trimmedUserId,
+      )
       if (!hasParticipant) return session
 
       return {
@@ -275,7 +301,10 @@ async function handleReset(req: IncomingMessage, res: ServerResponse) {
 }
 
 // ----- API Router -----
-type ApiHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void> | void
+type ApiHandler = (
+  req: IncomingMessage,
+  res: ServerResponse,
+) => Promise<void> | void
 
 const postHandlers: Record<string, ApiHandler> = {
   '/api/upsert-participant': handleUpsertParticipant,

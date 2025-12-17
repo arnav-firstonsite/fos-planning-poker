@@ -8,7 +8,11 @@ import { postJson } from './apiClient'
  * - derived session data (isRevealed, hasAnyVote, averages, currentUser)
  * - vote / reveal / reset mutations
  */
-export function useSession(roomId: string, userId: string, hasUserProfile: boolean) {
+export function useSession(
+  roomId: string,
+  userId: string,
+  hasUserProfile: boolean,
+) {
   const [liveSession, setLiveSession] = useState<SessionData | null>(null)
   const [isWorking, setIsWorking] = useState(false)
 
