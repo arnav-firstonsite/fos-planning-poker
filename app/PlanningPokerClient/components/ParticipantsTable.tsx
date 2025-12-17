@@ -9,6 +9,7 @@ type ParticipantsTableProps = {
 }
 
 function capitalizeFirstLetter(str: string): string {
+  if (!str) return ''
   return str[0].toUpperCase() + str.slice(1)
 }
 
@@ -17,7 +18,12 @@ export function ParticipantsTable({
   participants,
   isRevealed,
 }: ParticipantsTableProps) {
-  const paddingY = participants.length > 14 ? 'py-1.5' : participants.length > 9 ? 'py-2' : 'py-3'
+  const paddingY =
+    participants.length > 14
+      ? 'py-1.5'
+      : participants.length > 9
+        ? 'py-2'
+        : 'py-3'
 
   const thClassNames = `px-6 ${paddingY} font-semibold text-gray-800`
 
@@ -58,7 +64,9 @@ export function ParticipantsTable({
                 : badgeClasses.gray
 
             const roleLabel =
-              participant.role === 'qa' ? 'QA' : capitalizeFirstLetter(participant.role)
+              participant.role === 'qa'
+                ? 'QA'
+                : capitalizeFirstLetter(participant.role)
 
             const isCurrentUser = participant.id === currentUserId
 
@@ -70,14 +78,21 @@ export function ParticipantsTable({
                   : 'bg-light-grey'
 
             return (
-              <tr key={participant.id} className={`${baseRowTone} hover:brightness-95`}>
+              <tr
+                key={participant.id}
+                className={`${baseRowTone} hover:brightness-95`}
+              >
                 <td className={`px-6 ${paddingY} font-medium text-gray-900`}>
                   {participant.name}
                   {isCurrentUser && (
-                    <span className="ml-2 text-xs font-normal text-gray-700">(you)</span>
+                    <span className="ml-2 text-xs font-normal text-gray-700">
+                      (you)
+                    </span>
                   )}
                 </td>
-                <td className={`px-6 ${paddingY} text-gray-600`}>{roleLabel}</td>
+                <td className={`px-6 ${paddingY} text-gray-600`}>
+                  {roleLabel}
+                </td>
                 <td className={`px-6 ${paddingY}`}>
                   <span
                     className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold border min-w-[2.5rem] ${selectedBadgeClasses}`}

@@ -10,7 +10,11 @@ type VoteControlsProps = {
 
 const VOTE_OPTIONS: Vote[] = ['0', '1', '2', '3', '5', '8', '13', '?', 'coffee']
 
-export function VoteControls({ selectedVote, disabled, onVoteClick }: VoteControlsProps) {
+export function VoteControls({
+  selectedVote,
+  disabled,
+  onVoteClick,
+}: VoteControlsProps) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-3 border-b border-gray-100 px-6 py-4">
       {VOTE_OPTIONS.map((vote) => {

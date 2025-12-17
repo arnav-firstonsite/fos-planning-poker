@@ -4,10 +4,14 @@ type PlanningPokerHeaderProps = {
   onChangeProfile: () => void
 }
 
-export function PlanningPokerHeader({ onChangeProfile }: PlanningPokerHeaderProps) {
+export function PlanningPokerHeader({
+  onChangeProfile,
+}: PlanningPokerHeaderProps) {
   return (
     <header className="flex items-center justify-between h-12 bg-orange w-full px-4 text-dark-blue">
-      <div className="font-semibold cursor-default">First Onsite Planning Poker</div>
+      <div className="font-semibold cursor-default">
+        First Onsite Planning Poker
+      </div>
       <button
         type="button"
         onClick={onChangeProfile}

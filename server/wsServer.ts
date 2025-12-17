@@ -1,7 +1,11 @@
 // src/server/wsServer.ts
 import { WebSocketServer, WebSocket } from 'ws'
 import type { Server as HttpServer } from 'http'
-import { updateSession, getSession, sortSession } from '../app/planningPokerShared'
+import {
+  updateSession,
+  getSession,
+  sortSession,
+} from '../app/planningPokerShared'
 
 type RoomId = string
 type RoomsMap = Map<RoomId, Set<WebSocket>>
@@ -12,6 +16,38 @@ const rooms: RoomsMap = new Map()
 const socketInfo = new Map<WebSocket, SocketInfo>()
 const userConnectionCounts: UserConnectionCounts = new Map()
 
+type JoinMessage = {
+  type: 'join'
+  roomId: string
+  userId: string
+}
+
+type ClientMessage = JoinMessage // extendable later
+
+function isJoinMessage(msg: unknown): msg is JoinMessage {
+  if (!msg || typeof msg !== 'object') return false
+  const m = msg as Record<string, unknown>
+  return (
+    m.type === 'join' &&
+    typeof m.roomId === 'string' &&
+    typeof m.userId === 'string'
+  )
+}
+
+function getSortedSession(roomId: RoomId) {
+  const session = getSession(roomId)
+  return sortSession(session)
+}
+
+function broadcastSession(roomId: RoomId) {
+  const sortedSession = getSortedSession(roomId)
+  broadcastToRoom(roomId, {
+    type: 'session',
+    roomId,
+    session: sortedSession,
+  })
+}
+
 export function attachWebSocketServer(server: HttpServer) {
   const wss = new WebSocketServer({
     server,
@@ -21,11 +57,12 @@ export function attachWebSocketServer(server: HttpServer) {
   wss.on('connection', (socket: WebSocket) => {
     socket.on('message', (data) => {
       try {
-        const msg = JSON.parse(data.toString())
+        const raw = data.toString()
+        const msg: ClientMessage = JSON.parse(raw)
 
-        if (msg.type === 'join') {
-          const roomId = String(msg.roomId ?? '')
-          const userId = String(msg.userId ?? '').trim()
+        if (isJoinMessage(msg)) {
+          const roomId = msg.roomId.trim()
+          const userId = msg.userId.trim()
           if (!roomId || !userId) return
 
           if (!rooms.has(roomId)) rooms.set(roomId, new Set())
@@ -33,18 +70,26 @@ export function attachWebSocketServer(server: HttpServer) {
 
           socketInfo.set(socket, { roomId, userId })
 
-          const session = getSession(roomId)
-          const sortedSession = sortSession(session)
+          const userKey = `${roomId}:${userId}`
+          const prevCount = userConnectionCounts.get(userKey) ?? 0
+          userConnectionCounts.set(userKey, prevCount + 1)
 
-          socket.send(
-            JSON.stringify({
-              type: 'session',
-              roomId,
-              session: sortedSession,
-            }),
-          )
+          const sortedSession = getSortedSession(roomId)
+
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(
+              JSON.stringify({
+                type: 'session',
+                roomId,
+                session: sortedSession,
+              }),
+            )
+          }
+
+          return
         }
-        // if you add more message types later, handle them here
+
+        console.warn('[ws] unknown message type', { raw })
       } catch (err) {
         console.error('[ws] failed to handle message', {
           error: err instanceof Error ? err.message : String(err),
@@ -81,14 +126,7 @@ export function attachWebSocketServer(server: HttpServer) {
             participants: session.participants.filter((p) => p.id !== userId),
           }))
 
-          const session = getSession(roomId)
-          const sortedSession = sortSession(session)
-
-          broadcastToRoom(roomId, {
-            type: 'session',
-            roomId,
-            session: sortedSession,
-          })
+          broadcastSession(roomId)
         } catch (err) {
           console.error('[ws] error during disconnect cleanup', {
             roomId,

@@ -26,8 +26,16 @@ export function PlanningPokerClient() {
     handleProfileSubmit,
   } = useUserProfile(ROOM_ID)
 
-  const { session, isRevealed, hasAnyVote, currentUser, isWorking, submitVote, reveal, reset } =
-    useSession(ROOM_ID, userId, hasUserProfile)
+  const {
+    session,
+    isRevealed,
+    hasAnyVote,
+    currentUser,
+    isWorking,
+    submitVote,
+    reveal,
+    reset,
+  } = useSession(ROOM_ID, userId, hasUserProfile)
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-light-grey font-sans">
