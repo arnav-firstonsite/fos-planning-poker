@@ -1,261 +1,503 @@
-# First Onsite Planning Poker
+First Onsite Planning Poker
+===========================
 
-A simple, real-time planning poker app built with Next.js, React, and WebSockets.  
-Designed for dev/QA estimation sessions at First Onsite.
-
-Users join a single room, pick a role (Dev or QA), cast votes, reveal/reset as a group, and see everyone update live.
+Collaborative planning poker application for development teams, built with Next.js, React, TypeScript, and a custom HTTP + WebSocket server. The app supports real-time voting in a shared room with a clean UI optimized for both desktop and mobile.
 
 ---
 
 ## Features
 
-- 🔁 **Real-time updates** via WebSockets (`/ws`) – everyone sees joins, leaves, and votes instantly
-- 👤 **Per-user profiles** stored in `localStorage`
-  - Stable `userId` per browser
-  - Name + role (`dev` or `qa`) persisted across sessions
-- 🧑‍💻 **Dev vs QA roles**
-  - Devs always appear above QA
-  - Sorting:
-    - **Before reveal**: Role priority, then alphabetically by name
-    - **After reveal**: Role priority, then highest vote value first
-- ✅ **Voting UX**
-  - Fibonacci-ish values + `?` + `☕️`
-  - Button stays highlighted for your selected vote
-  - You can change or clear your vote any time (even after reveal)
-- 📊 **Per-role averages**
-  - Separate Dev and QA averages once votes are revealed
-- 👋 **Presence management**
-  - Multiple tabs for the same user are treated as one participant
-  - Closing your last tab removes you from the room for everyone else
-- 🧹 **Validation & safety**
-  - Name is required and cannot be just whitespace
-  - Role selection is required
-  - Reveal is disabled until at least one vote exists
+### Core workflow
+
+- Single shared room (currently `000`) for quick sessions.
+- Profile modal on first visit:
+  - Collects name.
+  - Saves profile to `localStorage`.
+  - Uses the stored profile to auto-join on subsequent visits.
+- “Change Profile” button in the header to update name.
+
+### Voting
+
+- Fibonacci-style voting controls:
+  - Options: `0, 1, 2, 3, 5, 8, 13, ?, coffee`.
+  - `coffee` displayed as `☕️` in both the controls and the table.
+- Vote selection:
+  - Click to select a vote; the button highlights with an orange background and white text.
+  - Clicking the same vote again clears the selection and removes the highlight immediately.
+- Voting is disabled until a valid profile (name) exists.
+
+### Reveal & reset
+
+- **Reveal Votes**:
+  - Disabled when no participant has cast a vote.
+  - When triggered, changes story status to `revealed` and shows actual vote values.
+- **Reset**:
+  - Clears all votes.
+  - Sets story status back to `pending`.
+  - Leaves the participant list intact.
+- The primary action button toggles between **Reveal Votes** and **Reset** depending on story status.
+- Actions are blocked while a request is in flight to prevent double submits.
+
+### Participants table
+
+- Display of all participants in the room:
+  - Columns: Participant, Vote.
+- Row styling:
+  - Dev rows use a light blue background tone.
+  - QA rows use a deeper orange background tone.
+  - Hover state slightly darkens the row using a brightness change.
+- Current user:
+  - Marked with “(you)” after the name.
+- Vote indicator:
+  - Before reveal:
+    - `✓` if a vote has been cast.
+    - `—` if no vote yet.
+  - After reveal:
+    - Actual vote value (including `☕️`) if present.
+    - `—` if no vote was given.
+  - Votes are wrapped in a fixed-width rounded badge (`min-w-[2.5rem]`) to avoid table layout shifts as votes change.
+- Dynamic row padding:
+  - Larger vertical padding for small rooms.
+  - Reduced padding when participant count exceeds 10 and then 14 to keep more content on screen.
+
+### Charts
+
+- Two bar charts rendered once the story is revealed:
+  - **Dev** chart: distribution of numeric votes cast by Devs.
+  - **QA** chart: distribution of numeric votes cast by QA.
+- Chart data:
+  - Only numeric votes (`0, 1, 2, 3, 5, 8, 13`) are counted.
+  - `?` and `coffee` are excluded from the numeric charts.
+  - All numeric buckets are always present with a count, even when zero, so the chart visually conveys absence of numeric votes.
+- Rendering:
+  - Implemented with Recharts and `ResponsiveContainer` so charts fit inside the existing panel without expanding it.
+  - Dev and QA charts are displayed side by side on wider screens and wrap on narrow screens.
+  - Titles “Dev” and “QA” appear above the respective charts.
+  - Axes inherit the page font and use a small tick font size to keep the charts visually subtle.
+
+### Real-time behavior
+
+- Custom WebSocket server mounted on the same HTTP server under `/ws`.
+- On connection:
+  - Client sends a `join` message with `roomId` and `userId`.
+  - Server tracks which sockets are in which rooms.
+  - Server sends an initial session snapshot back to the joining socket.
+- On actions (join, leave, vote, reveal, reset):
+  - HTTP API mutates in-memory `SessionData`.
+  - Server broadcasts an updated, sorted `SessionData` snapshot to all sockets in the room.
+- Multi-tab safety:
+  - Each `(roomId, userId)` pair tracks a connection count.
+  - Closing one tab decrements the count but does not remove the participant unless it was the last active connection.
+  - When the last connection for a user in a room closes, that user is removed from the session and a new snapshot is broadcast.
 
 ---
 
-## Tech Stack
+## Architecture
 
-- **Framework:** Next.js 16 (App Router)
-- **UI:** React 19, Tailwind CSS 4
-- **Runtime:** Node 18+
-- **WebSockets:** [`ws`](https://github.com/websockets/ws)
-- **Dev runtime:** [`tsx`](https://github.com/esbuild-kit/tsx) for the custom HTTP server
-- **Language:** TypeScript
+### Overview
+
+- Next.js App Router for routing and rendering.
+- Custom Node HTTP server (`server/httpServer.ts`) that:
+  - Wraps Next’s request handler for all non-API routes.
+  - Hosts a small REST-style API under `/api/*` for mutations.
+- WebSocket server (`server/wsServer.ts`) attached to the same HTTP server for real-time updates.
+- Shared session logic in `app/planningPokerShared`:
+  - Types: `SessionData`, `Participant`, `Vote`, etc.
+  - Utilities: `getSession`, `updateSession`, `sortSession`.
+
+### HTTP server (`server/httpServer.ts`)
+
+The HTTP server:
+
+- Prepares the Next app.
+- Creates a Node HTTP server.
+- Routes:
+  - Requests whose path starts with `/api/` → API router.
+  - Everything else → Next request handler.
+
+API endpoints (all `POST`):
+
+1. `POST /api/upsert-participant`
+
+   **Body:**
+
+       {
+         "roomId": string,
+         "userId": string,
+         "name": string,
+       }
+
+   **Behavior:**
+
+   - Validates the payload.
+   - Trims `roomId`, `userId`, and `name`.
+   - Adds a new participant or updates an existing participant (by `userId`).
+   - Preserves an existing vote when updating name.
+   - Broadcasts an updated sorted session snapshot to the room.
+   - Returns `204 No Content` on success.
+
+2. `POST /api/submit-vote`
+
+   **Body:**
+
+       {
+         "roomId": string,
+         "userId": string,
+         "vote": string | null
+       }
+
+   **Behavior:**
+
+   - Validates `roomId`, `userId`, and `vote`.
+   - Allowed votes: `0, 1, 2, 3, 5, 8, 13, ?, coffee`, or `null` to clear.
+   - Normalizes IDs and vote strings.
+   - If the user is not an existing participant, the request is a no-op.
+   - Updates the participant’s `vote` field.
+   - Broadcasts an updated sorted session snapshot.
+   - Returns `204 No Content` on success.
+
+3. `POST /api/reveal`
+
+   **Body:**
+
+       {
+         "roomId": string
+       }
+
+   **Behavior:**
+
+   - Validates `roomId`.
+   - Sets `storyStatus` for the room to `"revealed"`.
+   - Broadcasts an updated sorted session snapshot.
+   - Returns `204 No Content` on success.
+
+4. `POST /api/reset`
+
+   **Body:**
+
+       {
+         "roomId": string
+       }
+
+   **Behavior:**
+
+   - Validates `roomId`.
+   - Sets `storyStatus` to `"pending"`.
+   - Sets all participant votes to `null`.
+   - Broadcasts an updated sorted session snapshot.
+   - Returns `204 No Content` on success.
+
+The server uses shared helpers:
+
+- `parseJsonBody(req)` to safely parse JSON.
+- `sendJson(res, status, payload)` for consistent JSON responses.
+- `sendNoContent(res)` for sending `204` responses.
+- `broadcastRoomUpdate(roomId)` to retrieve, sort, and broadcast the current session.
+
+### WebSocket server (`server/wsServer.ts`)
+
+The WebSocket server:
+
+- Attaches a `WebSocketServer` to the same Node HTTP server under path `/ws`.
+- Maintains:
+  - `rooms: Map<roomId, Set<WebSocket>>` – open sockets per room.
+  - `socketInfo: Map<WebSocket, { roomId, userId }>` – metadata per socket.
+  - `userConnectionCounts: Map<string, number>` – key format `roomId:userId`.
+
+Client message shape:
+
+- `JoinMessage`:
+
+      {
+        "type": "join",
+        "roomId": string,
+        "userId": string
+      }
+
+On `message`:
+
+- Parses incoming JSON.
+- Uses a type guard to validate `JoinMessage`.
+- On a valid `join` message:
+  - Trims `roomId` and `userId`.
+  - Adds the socket to the room’s set.
+  - Stores socket metadata.
+  - Increments `(roomId, userId)` connection count.
+  - Retrieves and sorts the current `SessionData`.
+  - Sends a `session` payload to the joining socket with the latest session snapshot.
+
+On `close`:
+
+- Reads socket metadata.
+- Removes the socket from the room’s set.
+- Decrements the connection count for the `(roomId, userId)` key.
+- When the connection count reaches zero:
+  - Calls `updateSession` to remove the participant from the room.
+  - Calls `broadcastSession(roomId)` to push a fresh sorted session snapshot.
+
+On `error`:
+
+- Logs a warning including the error message.
+
+The module exports:
+
+- `attachWebSocketServer(server)` – to integrate with the HTTP server.
+- `broadcastToRoom(roomId, payload)` – to send messages to all sockets in a room.
 
 ---
 
-## Architecture Overview
+## Frontend structure
 
-The app uses a **custom Node HTTP server** that runs:
+### Entry point
 
-- The Next.js app
-- A WebSocket server at `/ws`
-- JSON HTTP endpoints under `/api/*`
+- `app/page.tsx` renders `PlanningPokerClient` as the main interactive screen.
 
-### Server Layout
+### `PlanningPokerClient`
 
-- **HTTP + Next server:** `server/httpServer.ts`
-  - Creates a Node HTTP server
-  - Prepares and mounts Next.js
-  - Dispatches `/api/*` requests to JSON handlers
-  - Forwards all other requests to Next’s request handler
-- **WebSocket server:** `server/wsServer.ts`
-  - Attached to the same HTTP server in `httpServer.ts`
-  - Handles `/ws` connections
-  - Manages join/leave and session broadcasts
+_File: `app/PlanningPokerClient/index.tsx`_
 
-### Room & Session Model
+- Declared as a client component.
+- Uses two custom hooks:
+  - `useUserProfile(roomId)`:
+    - Manages `userId`, `userName`.
+    - Persists profile to `localStorage`.
+    - Exposes:
+      - `profileChecked` to indicate that `localStorage` has been read.
+      - `showProfileModal` and `setShowProfileModal` for modal visibility.
+      - `hasUserProfile` to gate voting and automatic joining.
+      - `handleProfileSubmit` to call the upsert API and close the modal on success.
+  - `useSession(roomId, userId, hasUserProfile)`:
+    - Connects to the WebSocket endpoint and joins the room when profile data is available.
+    - Stores a `session` object derived from either the initial data or WebSocket updates.
+    - Exposes:
+      - `isRevealed`
+      - `hasAnyVote`
+      - `currentUser`
+      - `isWorking` (tracks in-flight HTTP requests).
+      - `submitVote`, `reveal`, `reset` – thin wrappers over HTTP API endpoints.
 
-- There is currently a **single room** with ID `"000"`:
-  - The ID is hardcoded in the client (see `PlanningPokerClient`)
-- Session state is held **in memory** on the server:
-  - Shared types & helpers live in `app/planningPokerShared.ts`
-  - The server keeps a `Map<string, SessionData>` for rooms
-  - This means:
-    - No persistent storage
-    - Sessions reset when the process restarts
+Layout:
 
-#### SessionData
+- Root `div`:
+  - Full viewport height.
+  - Light grey background.
+  - Global font family.
+- `PlanningPokerHeader`:
+  - Orange header with app title and a “Change Profile” button.
+- `main`:
+  - Centers a card (`max-w-3xl`) with:
+    - `VoteControls`
+    - `Charts` (only when story status is not `pending`)
+    - `ParticipantsTable`
+    - `SessionActions`
+- `ProfileModal`:
+  - Rendered when `profileChecked` is true and `showProfileModal` is true.
 
-Conceptually, a session looks like:
+### UI components
 
-- `storyStatus: "pending" | "revealed"`
-- `participants: Participant[]`, where each participant has:
-  - `id` (stable `userId`)
-  - `name`
-  - `role` (`"dev"` or `"qa"`)
-  - `vote` (`Vote | null`)
+- `PlanningPokerHeader`:
+  - Props: `onChangeProfile`.
+  - Displays the site header and a button that opens the profile modal.
+  - Site title is non-interactive; the button has hover and focus states.
 
-Votes are constrained to the allowed `Vote` union (e.g. `"0" | "1" | "2" | "3" | "5" | "8" | "13" | "?" | "coffee"`).
+- `ProfileModal`:
+  - Props:
+    - `name`
+    - `onNameChange`
+    - `onSubmit`, `onCancel`
+  - Modal overlay with:
+    - Name text input:
+      - `maxLength={50}`
+      - Validates that the name is not blank or only spaces.
+      - Uses `autoFocus`.
+    - Buttons:
+      - Cancel (closes without saving).
+      - Save (submits the form).
+    - Save and Cancel buttons use pointer cursors and focus styles.
 
-### WebSockets
+- `VoteControls`:
+  - Props:
+    - `selectedVote`
+    - `disabled`
+    - `onVoteClick`
+  - Renders cards for all vote options.
+  - Selected vote:
+    - Orange background, white text, no shadow.
+  - Hover state:
+    - Slight upward translation and outline change.
+  - Handles the `coffee` option as `☕️`.
 
-- Implemented in `server/wsServer.ts`
-- Attached in `server/httpServer.ts`
-- Path: `/ws`
-- Protocol:
-  - `ws://` in dev
-  - `wss://` in production (via your hosting provider)
-- Client behavior:
-  - Connects once `userId` is known
-  - Sends `{ type: "join", roomId, userId }` on open
-  - Server responds with a full `session` snapshot
-  - Subsequent updates are pushed from the server whenever:
-    - Someone joins/updates profile
-    - Someone votes
-    - Story is revealed
-    - Story is reset
-    - A user disconnects (last tab for that `userId` closes)
+- `ParticipantsTable`:
+  - Props:
+    - `participants`
+    - `currentUserId`
+    - `isRevealed`
+  - Computes vertical padding based on participant count.
+  - Renders a responsive table with:
+    - Participant + “(you)” for the current user.
+    - Vote badge with fixed width.
+  - Vote display logic adapts to `isRevealed` as described above.
+  - Background colors:
+    - Dev rows: lighter blue.
+    - QA rows: darker orange.
+  - Hover effect: `hover:brightness-95`.
 
-### HTTP API
+- `SessionActions`:
+  - Props:
+    - `isRevealed`
+    - `canReveal`
+    - `canReset`
+    - `onReveal`
+    - `onReset`
+  - Renders:
+    - “Reveal Votes” button when not revealed.
+    - “Reset” button when revealed.
+  - Shared styling:
+    - Rounded corners, dark blue foreground background, white text.
+    - Hover and focus states.
+    - Disabled state with reduced opacity and `not-allowed` cursor.
 
-Endpoints are implemented in `server/httpServer.ts` and operate on the shared in-memory session map.
-
-- `POST /api/upsert-participant`
-  - Body: `{ roomId, userId, name, role }`
-  - Validates payload (roomId, non-empty name, valid role)
-  - Adds or updates the participant in the session
-  - Broadcasts updated session to `/ws` clients
-- `POST /api/submit-vote`
-  - Body: `{ roomId, userId, vote }`
-  - Validates vote against allowed values (or `null` to clear)
-  - Updates that user’s vote in the session
-  - Broadcasts updated session
-- `POST /api/reveal`
-  - Body: `{ roomId }`
-  - Sets `storyStatus` to `"revealed"`
-  - Broadcasts updated session
-- `POST /api/reset`
-  - Body: `{ roomId }`
-  - Resets `storyStatus` to `"pending"` and clears all votes
-  - Broadcasts updated session
-
-### Client-Side App
-
-The main client tree lives under `app/PlanningPokerClient/` and is imported from `app/page.tsx`.
-
-Responsibilities of the client:
-
-- Manage local user profile (ID, name, role)
-  - `userId` stored in `localStorage` as `planningPokerUserId`
-  - Name + role in `planningPokerUserName` and `planningPokerUserRole`
-- Call the HTTP API endpoints for:
-  - Upserting participants
-  - Submitting votes
-  - Revealing
-  - Resetting
-- Connect to WebSocket and maintain `liveSession`
-- Derive sorted participant list and per-role averages for rendering
-- Show a modal to collect profile if missing/invalid
-
-Main component is in `PlanningPokerClient/index.tsx`
-
-Stateful client logic is encapsulated in custom hooks under the `PlanningPokerClient` feature folder:
-
-- `PlanningPokerClient/hooks/useUserProfile.ts` – manages local identity (userId, name, role), localStorage syncing, and profile modal behavior, including auto-joining the room when a valid profile exists.
-- `PlanningPokerClient/hooks/useSession.ts` – manages the WebSocket connection, keeps a live `SessionData` snapshot, derives per-role averages and current user, and sends commands via the HTTP API (submit vote, reveal, reset).
-
-The UI is split into small presentational components scoped to the feature:
-
-- `PlanningPokerClient/components/PlanningPokerHeader.tsx`
-- `PlanningPokerClient/components/VoteControls.tsx`
-- `PlanningPokerClient/components/AveragesBar.tsx`
-- `PlanningPokerClient/components/ParticipantsTable.tsx`
-- `PlanningPokerClient/components/SessionActions.tsx`
-- `PlanningPokerClient/components/ProfileModal.tsx`
+- `Charts`:
+  - Props: `session: SessionData`.
+  - Hidden when `session.storyStatus === 'pending'`.
+  - Uses `sessionToChartData` to build numeric vote distributions.
+  - Renders a `VoteChart` components inside a flex container.
+  - `VoteChart`:
+    - Title (`Votes`) above the chart.
+    - `ResponsiveContainer` wrapping a `BarChart` with:
+      - `XAxis` using the vote value as the label.
+      - `Bar` using the `count` field.
+      - `style={{ fontFamily: 'inherit' }}` and small tick font size.
 
 ---
 
-## Local Development
+## Technology stack
 
-### Requirements
-
-- Node 18+
-- npm (or another compatible package manager)
-
-### Install dependencies
-
-```bash
-npm install
-```
-
-### Run in development
-
-```bash
-npm run dev
-```
-
-This runs:
-
-```bash
-tsx server/httpServer.ts
-```
-
-Which:
-
-- Prepares Next in dev mode
-- Starts an HTTP server
-- Attaches the WebSocket server at `/ws`
-
-Open:
-
-- http://localhost:3000
-
-### Build for production
-
-```bash
-npm run build
-```
-
-This runs:
-
-```bash
-next build
-```
-
-### Run in production mode locally
-
-```bash
-NODE_ENV=production npm start
-```
-
-This runs:
-
-```bash
-NODE_ENV=production tsx server/httpServer.ts
-```
-
-and serves the built app at:
-
-- http://localhost:3000 (or the `PORT` your host provides)
+- Runtime: Node.js (developed with Node 22; Node 20+ recommended).
+- Framework: Next.js 16 (App Router).
+- UI: React 19.
+- Language: TypeScript.
+- Styling: Tailwind-style utility classes with a small custom color palette.
+- Real-time: `ws` WebSocket server and client.
+- Charts: Recharts.
 
 ---
 
 ## Scripts
 
-From `package.json`:
+Common scripts in `package.json` (names may vary slightly):
 
-```json
-{
-  "scripts": {
-    "dev": "tsx server/httpServer.ts",
-    "build": "next build",
-    "start": "NODE_ENV=production tsx server/httpServer.ts",
-    "lint": "eslint"
-  }
-}
-```
+- `dev`  
+  Starts the custom HTTP + WebSocket server in development mode, typically on `http://localhost:3000`.
+
+- `build`  
+  Runs the Next.js production build.
+
+- `start`  
+  Starts the custom HTTP + WebSocket server in production mode, serving the built Next.js app.
+
+- `lint`  
+  Runs ESLint using the flat config (`eslint.config.mjs`) with Next’s recommended rules.
+
+- `lint:fix`  
+  Runs ESLint with automatic fixing enabled.
+
+- `format`  
+  Runs Prettier over the codebase, if configured.
+
+For exact scripts, refer to `package.json` in the repository.
 
 ---
 
-## Notes & Limitations
+## Local development
 
-- **In-memory state only**
-  - Sessions and participants are not persisted; restarting the server clears everything.
-- **Single room**
-  - The app currently uses a fixed room ID `"000"`. Adding multiple rooms would require:
-    - Generating room IDs
-    - Routing based on path or query (e.g. `/rooms/[roomId]`)
-- **Not horizontally scalable yet**
-  - Because state is in-memory and WS connections are tied to a single process, you should run a **single instance** of this service (no load balancing) unless you introduce a shared datastore + broadcast mechanism (e.g. Redis).
+Prerequisites:
+
+- Node.js 20 or newer (development and deployment currently use Node 22.x).
+- npm or another compatible package manager.
+
+Install dependencies:
+
+    npm install
+
+Start the development server:
+
+    npm run dev
+
+By default:
+
+- The app listens on `http://localhost:3000` (configurable via `PORT`).
+- The WebSocket endpoint is available at `ws://localhost:3000/ws`.
+- The same process hosts both HTTP and WebSocket traffic.
+
+---
+
+## Production build and runtime
+
+Create a production build:
+
+    npm run build
+
+Start the production server:
+
+    npm start
+
+Common environment variables:
+
+- `PORT` – HTTP port (defaults to `3000` if omitted).
+- `NODE_ENV` – `production` for production mode.
+
+The production server:
+
+- Serves the Next.js build output.
+- Handles `/api/*` routes for upsert, voting, reveal, and reset.
+- Hosts WebSocket traffic under `/ws`.
+
+---
+
+## Linting and formatting
+
+- ESLint:
+  - Configured via `eslint.config.mjs`.
+  - Extends:
+    - `eslint-config-next/core-web-vitals`
+    - `eslint-config-next/typescript`
+  - Adds project-specific rules for TypeScript and React hooks, and integrates with Prettier via `eslint-config-prettier`.
+
+- Prettier:
+  - Controls formatting (spacing, quotes, line width).
+  - ESLint is configured to avoid conflicting style rules.
+
+---
+
+## Deployment
+
+The application is designed to run as a single Node.js web service that:
+
+- Serves the Next.js application.
+- Provides `/api/*` endpoints.
+- Hosts WebSocket connections on `/ws`.
+
+Typical deployment flow:
+
+1. Build the app with `npm run build`.
+2. Start the server with `npm start`.
+
+This model fits platforms that:
+
+- Support long-lived WebSocket connections.
+- Forward all HTTP and WebSocket traffic to the same Node process (or provide sticky sessions if scaled horizontally with a shared session state).
+
+Further details for a specific hosting provider (such as Render) are described in `DEPLOYMENT.md` in the repository.
+
+---
+
+## Future directions
+
+The current design provides a base for further enhancements, such as:
+
+- Multiple rooms with shareable URLs.
+- Async sessions tied to Jira issues, backed by a persistent database.
+- Jira integration to fetch story details and push final estimates.
+- Persistent session state beyond in-memory storage to support horizontal scaling.
+- Additional analytics or visualizations on voting patterns over time.

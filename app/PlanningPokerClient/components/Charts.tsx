@@ -6,10 +6,7 @@ type ChartDatum = {
   count: number
 }
 
-function sessionToChartData(
-  session: SessionData,
-  role: 'dev' | 'qa',
-): ChartDatum[] {
+function sessionToChartData(session: SessionData): ChartDatum[] {
   const counts: Record<string, number> = {
     '0': 0,
     '1': 0,
@@ -21,8 +18,6 @@ function sessionToChartData(
   }
 
   for (const participant of session.participants) {
-    if (participant.role !== role) continue
-
     const vote = participant.vote
     if (vote === null || vote === 'coffee' || vote === '?') continue
 
@@ -32,13 +27,13 @@ function sessionToChartData(
   return Object.entries(counts).map(([name, count]) => ({ name, count }))
 }
 
-type RoleChartProps = {
+type VoteChartProps = {
   title: string
   data: ChartDatum[]
   barColor: string
 }
 
-function RoleChart({ title, data, barColor }: RoleChartProps) {
+function VoteChart({ title, data, barColor }: VoteChartProps) {
   return (
     <div className="flex-1 min-w-0">
       <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-700">
@@ -63,17 +58,14 @@ export function Charts({ session }: ChartsProps) {
     return null
   }
 
+  const data = sessionToChartData(session)
+
   return (
     <div className="flex w-full flex-row flex-wrap items-center justify-center gap-4 px-4 text-center pt-4">
-      <RoleChart
-        title="Dev"
-        data={sessionToChartData(session, 'dev')}
+      <VoteChart
+        title="Votes"
+        data={data}
         barColor="var(--color-dark-blue)"
-      />
-      <RoleChart
-        title="QA"
-        data={sessionToChartData(session, 'qa')}
-        barColor="var(--color-orange)"
       />
     </div>
   )

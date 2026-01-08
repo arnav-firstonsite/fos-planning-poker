@@ -16,9 +16,7 @@ export function PlanningPokerClient() {
   const {
     userId,
     userName,
-    userRole,
     setUserName,
-    setUserRole,
     profileChecked,
     showProfileModal,
     setShowProfileModal,
@@ -72,9 +70,7 @@ export function PlanningPokerClient() {
       {profileChecked && showProfileModal && (
         <ProfileModal
           name={userName}
-          role={userRole}
           onNameChange={setUserName}
-          onRoleChange={setUserRole}
           onSubmit={handleProfileSubmit}
           onCancel={() => setShowProfileModal(false)}
         />
