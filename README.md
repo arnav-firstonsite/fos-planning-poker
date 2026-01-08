@@ -11,10 +11,10 @@ Collaborative planning poker application for development teams, built with Next.
 
 - Single shared room (currently `000`) for quick sessions.
 - Profile modal on first visit:
-  - Collects name and role (`Dev` or `QA`).
+  - Collects name.
   - Saves profile to `localStorage`.
   - Uses the stored profile to auto-join on subsequent visits.
-- “Change Profile” button in the header to update name and role.
+- “Change Profile” button in the header to update name.
 
 ### Voting
 
@@ -24,7 +24,7 @@ Collaborative planning poker application for development teams, built with Next.
 - Vote selection:
   - Click to select a vote; the button highlights with an orange background and white text.
   - Clicking the same vote again clears the selection and removes the highlight immediately.
-- Voting is disabled until a valid profile (name + role) exists.
+- Voting is disabled until a valid profile (name) exists.
 
 ### Reveal & reset
 
@@ -41,8 +41,7 @@ Collaborative planning poker application for development teams, built with Next.
 ### Participants table
 
 - Display of all participants in the room:
-  - Columns: Participant, Role, Vote.
-  - Role displayed as `Dev` or `QA`.
+  - Columns: Participant, Vote.
 - Row styling:
   - Dev rows use a light blue background tone.
   - QA rows use a deeper orange background tone.
@@ -126,7 +125,6 @@ API endpoints (all `POST`):
          "roomId": string,
          "userId": string,
          "name": string,
-         "role": "dev" | "qa"
        }
 
    **Behavior:**
@@ -134,7 +132,7 @@ API endpoints (all `POST`):
    - Validates the payload.
    - Trims `roomId`, `userId`, and `name`.
    - Adds a new participant or updates an existing participant (by `userId`).
-   - Preserves an existing vote when updating name or role.
+   - Preserves an existing vote when updating name.
    - Broadcasts an updated sorted session snapshot to the room.
    - Returns `204 No Content` on success.
 
@@ -261,7 +259,7 @@ _File: `app/PlanningPokerClient/index.tsx`_
 - Declared as a client component.
 - Uses two custom hooks:
   - `useUserProfile(roomId)`:
-    - Manages `userId`, `userName`, `userRole`.
+    - Manages `userId`, `userName`.
     - Persists profile to `localStorage`.
     - Exposes:
       - `profileChecked` to indicate that `localStorage` has been read.
@@ -304,15 +302,14 @@ Layout:
 
 - `ProfileModal`:
   - Props:
-    - `name`, `role`
-    - `onNameChange`, `onRoleChange`
+    - `name`
+    - `onNameChange`
     - `onSubmit`, `onCancel`
   - Modal overlay with:
     - Name text input:
       - `maxLength={50}`
       - Validates that the name is not blank or only spaces.
       - Uses `autoFocus`.
-    - Role radio group (`Dev`, `QA`) with pointer cursor styles.
     - Buttons:
       - Cancel (closes without saving).
       - Save (submits the form).
@@ -338,7 +335,6 @@ Layout:
   - Computes vertical padding based on participant count.
   - Renders a responsive table with:
     - Participant + “(you)” for the current user.
-    - Role (`Dev` / `QA`).
     - Vote badge with fixed width.
   - Vote display logic adapts to `isRevealed` as described above.
   - Background colors:
@@ -364,13 +360,13 @@ Layout:
 - `Charts`:
   - Props: `session: SessionData`.
   - Hidden when `session.storyStatus === 'pending'`.
-  - Uses `sessionToChartData` to build numeric vote distributions per role.
-  - Renders two `RoleChart` components inside a flex container.
-  - Each `RoleChart`:
-    - Title (`Dev` or `QA`) above the chart.
+  - Uses `sessionToChartData` to build numeric vote distributions.
+  - Renders a `VoteChart` components inside a flex container.
+  - `VoteChart`:
+    - Title (`Votes`) above the chart.
     - `ResponsiveContainer` wrapping a `BarChart` with:
       - `XAxis` using the vote value as the label.
-      - `Bar` using the `count` field and a role-specific color.
+      - `Bar` using the `count` field.
       - `style={{ fontFamily: 'inherit' }}` and small tick font size.
 
 ---
