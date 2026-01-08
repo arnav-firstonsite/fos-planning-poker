@@ -5,7 +5,6 @@ export type Vote = '0' | '1' | '2' | '3' | '5' | '8' | '13' | '?' | 'coffee'
 export type Participant = {
   id: string
   name: string
-  role: 'dev' | 'qa'
   vote: Vote | null
 }
 
@@ -44,42 +43,16 @@ function voteValue(vote: Vote | null) {
   return Number.isNaN(numeric) ? -1 : numeric
 }
 
-function rolePriority(p: Participant) {
-  if (p.role === 'dev') return 0
-  if (p.role === 'qa') return 1
-  return 2
-}
-
-export function averageForRole(
-  session: SessionData,
-  role: Participant['role'],
-) {
-  const votes = session.participants
-    .filter((p) => p.role === role)
-    .map((p) => p.vote)
-    .filter((vote): vote is Exclude<Vote, '?' | 'coffee'> => {
-      if (vote === null) return false
-      return vote !== '?' && vote !== 'coffee'
-    })
-    .map((vote) => Number(vote))
-    .filter((v) => !Number.isNaN(v))
-
-  if (!votes.length) return '—'
-  const avg = votes.reduce((sum, v) => sum + v, 0) / votes.length
-  return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1)
-}
-
 export function sortSession(session: SessionData): SessionData {
   const isRevealed = session.storyStatus === 'revealed'
 
   const sortedParticipants = session.participants.slice().sort((a, b) => {
-    const roleDiff = rolePriority(a) - rolePriority(b)
-    if (roleDiff !== 0) return roleDiff
-
+    // Before reveal: sort alphabetically by name
     if (!isRevealed) {
       return a.name.localeCompare(b.name)
     }
 
+    // After reveal: sort by vote (highest first), then name
     const voteDiff = voteValue(b.vote) - voteValue(a.vote)
     if (voteDiff !== 0) return voteDiff
 

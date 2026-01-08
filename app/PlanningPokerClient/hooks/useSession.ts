@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Vote, SessionData, averageForRole } from '../../planningPokerShared'
+import { Vote, SessionData } from '../../planningPokerShared'
 import { postJson } from './apiClient'
 
 /**
  * Handles:
  * - WebSocket connection and liveSession
- * - derived session data (isRevealed, hasAnyVote, averages, currentUser)
+ * - derived session data (isRevealed, hasAnyVote, currentUser)
  * - vote / reveal / reset mutations
  */
 export function useSession(
@@ -58,9 +58,6 @@ export function useSession(
   const isRevealed = session.storyStatus === 'revealed'
   const hasAnyVote = session.participants.some((p) => p.vote !== null)
 
-  const devAverage = averageForRole(session, 'dev')
-  const qaAverage = averageForRole(session, 'qa')
-
   const currentUser = session.participants.find((p) => p.id === userId) ?? null
 
   const submitVote = async (vote: Vote) => {
@@ -106,8 +103,6 @@ export function useSession(
     session,
     isRevealed,
     hasAnyVote,
-    devAverage,
-    qaAverage,
     currentUser,
     isWorking,
     submitVote,

@@ -1,4 +1,4 @@
-// app/PlanningPokerClient/ParticipantsTable.tsx
+// app/PlanningPokerClient/components/ParticipantsTable.tsx
 
 import { Participant } from '../../planningPokerShared'
 
@@ -6,11 +6,6 @@ type ParticipantsTableProps = {
   participants: Participant[]
   currentUserId: string
   isRevealed: boolean
-}
-
-function capitalizeFirstLetter(str: string): string {
-  if (!str) return ''
-  return str[0].toUpperCase() + str.slice(1)
 }
 
 export function ParticipantsTable({
@@ -33,7 +28,6 @@ export function ParticipantsTable({
         <thead className="bg-gray-50">
           <tr>
             <th className={thClassNames}>Participant</th>
-            <th className={thClassNames}>Role</th>
             <th className={thClassNames}>Vote</th>
           </tr>
         </thead>
@@ -63,19 +57,10 @@ export function ParticipantsTable({
                 ? badgeClasses.white
                 : badgeClasses.gray
 
-            const roleLabel =
-              participant.role === 'qa'
-                ? 'QA'
-                : capitalizeFirstLetter(participant.role)
-
             const isCurrentUser = participant.id === currentUserId
 
-            const baseRowTone =
-              participant.role === 'dev'
-                ? 'bg-light-blue/20'
-                : participant.role === 'qa'
-                  ? 'bg-orange/40'
-                  : 'bg-light-grey'
+            // Always use the "dev" style background now
+            const baseRowTone = 'bg-light-blue/20'
 
             return (
               <tr
@@ -89,9 +74,6 @@ export function ParticipantsTable({
                       (you)
                     </span>
                   )}
-                </td>
-                <td className={`px-6 ${paddingY} text-gray-600`}>
-                  {roleLabel}
                 </td>
                 <td className={`px-6 ${paddingY}`}>
                   <span

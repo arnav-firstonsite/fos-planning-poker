@@ -4,7 +4,7 @@ import { postJson } from './apiClient'
 /**
  * Handles:
  * - userId generation + localStorage
- * - userName / userRole state
+ * - userName state
  * - profileChecked + showProfileModal
  * - auto-join room if stored profile exists
  * - profile submit logic
@@ -12,7 +12,6 @@ import { postJson } from './apiClient'
 export function useUserProfile(roomId: string) {
   const [userId, setUserId] = useState<string>('')
   const [userName, setUserName] = useState<string>('')
-  const [userRole, setUserRole] = useState<'dev' | 'qa' | ''>('')
 
   const [profileChecked, setProfileChecked] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
@@ -20,6 +19,7 @@ export function useUserProfile(roomId: string) {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
+    // Get or create a stable userId
     let storedId = window.localStorage.getItem('planningPokerUserId')
     if (!storedId) {
       storedId =
@@ -32,22 +32,19 @@ export function useUserProfile(roomId: string) {
 
     const storedName =
       window.localStorage.getItem('planningPokerUserName') ?? ''
-    const storedRole = window.localStorage.getItem('planningPokerUserRole')
 
-    const hasStoredProfile =
-      !!storedName && (storedRole === 'dev' || storedRole === 'qa')
+    const hasStoredProfile = !!storedName
 
     if (storedName) setUserName(storedName)
-    if (storedRole === 'dev' || storedRole === 'qa') setUserRole(storedRole)
 
     if (hasStoredProfile) {
       ;(async () => {
         try {
+          // Auto-join room with stored profile
           await postJson('/api/upsert-participant', {
             roomId,
             userId: storedId,
             name: storedName,
-            role: storedRole,
           })
           setShowProfileModal(false)
         } catch (err) {
@@ -58,13 +55,13 @@ export function useUserProfile(roomId: string) {
         }
       })()
     } else {
+      // No saved profile -> show modal
       setShowProfileModal(true)
       setProfileChecked(true)
     }
   }, [roomId])
 
-  const hasUserProfile =
-    !!userId && !!userName && (userRole === 'dev' || userRole === 'qa')
+  const hasUserProfile = !!userId && !!userName.trim()
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -75,13 +72,13 @@ export function useUserProfile(roomId: string) {
       return
     }
 
-    if (!(userRole === 'dev' || userRole === 'qa')) {
+    if (!trimmedName) {
+      // Let the input's required/pattern validation handle the UI message
       return
     }
 
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('planningPokerUserName', trimmedName)
-      window.localStorage.setItem('planningPokerUserRole', userRole)
     }
 
     try {
@@ -89,7 +86,6 @@ export function useUserProfile(roomId: string) {
         roomId,
         userId,
         name: trimmedName,
-        role: userRole,
       })
       setShowProfileModal(false)
     } catch (err) {
@@ -100,9 +96,7 @@ export function useUserProfile(roomId: string) {
   return {
     userId,
     userName,
-    userRole,
     setUserName,
-    setUserRole,
     profileChecked,
     showProfileModal,
     setShowProfileModal,

@@ -18,7 +18,6 @@ type UpsertParticipantBody = {
   roomId: string
   userId: string
   name: string
-  role: 'dev' | 'qa'
 }
 
 type SubmitVoteBody = {
@@ -104,14 +103,13 @@ async function handleUpsertParticipant(
     return sendJson(res, 400, { error: 'Invalid JSON' })
   }
 
-  const { roomId, userId, name, role } = (body ??
+  const { roomId, userId, name } = (body ??
     {}) as Partial<UpsertParticipantBody>
 
   if (
     typeof roomId !== 'string' ||
     typeof userId !== 'string' ||
-    typeof name !== 'string' ||
-    (role !== 'dev' && role !== 'qa')
+    typeof name !== 'string'
   ) {
     return sendJson(res, 400, { error: 'Invalid payload' })
   }
@@ -133,7 +131,6 @@ async function handleUpsertParticipant(
       const updatedParticipant = {
         id: trimmedUserId,
         name: trimmedName,
-        role,
         vote:
           existingIndex === -1
             ? null

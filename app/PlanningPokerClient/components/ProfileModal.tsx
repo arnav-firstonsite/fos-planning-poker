@@ -4,18 +4,14 @@ import type { FormEvent } from 'react'
 
 type ProfileModalProps = {
   name: string
-  role: 'dev' | 'qa' | ''
   onNameChange: (name: string) => void
-  onRoleChange: (role: 'dev' | 'qa') => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onCancel: () => void
 }
 
 export function ProfileModal({
   name,
-  role,
   onNameChange,
-  onRoleChange,
   onSubmit,
   onCancel,
 }: ProfileModalProps) {
@@ -24,7 +20,7 @@ export function ProfileModal({
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Welcome</h2>
         <p className="mb-4 text-sm text-gray-600">
-          Please enter your name and role so we can attach your votes.
+          Please enter a name so votes can be attached.
         </p>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="text-left">
@@ -43,36 +39,6 @@ export function ProfileModal({
               required
               autoFocus
             />
-          </div>
-          <div className="text-left">
-            <span className="mb-1 block text-sm font-medium text-gray-700">
-              Role
-            </span>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-1 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="radio"
-                  name="role"
-                  value="dev"
-                  checked={role === 'dev'}
-                  onChange={() => onRoleChange('dev')}
-                  className="h-4 w-4 cursor-pointer"
-                  required
-                />
-                Dev
-              </label>
-              <label className="flex items-center gap-1 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="radio"
-                  name="role"
-                  value="qa"
-                  checked={role === 'qa'}
-                  onChange={() => onRoleChange('qa')}
-                  className="h-4 w-4 cursor-pointer"
-                />
-                QA
-              </label>
-            </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
