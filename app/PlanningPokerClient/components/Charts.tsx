@@ -62,11 +62,7 @@ export function Charts({ session }: ChartsProps) {
 
   return (
     <div className="flex w-full flex-row flex-wrap items-center justify-center gap-4 px-4 text-center pt-4">
-      <VoteChart
-        title="Votes"
-        data={data}
-        barColor="var(--color-dark-blue)"
-      />
+      <VoteChart title="Votes" data={data} barColor="var(--color-dark-blue)" />
     </div>
   )
 }

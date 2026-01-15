@@ -1,4 +1,4 @@
-export async function postJson(path: string, body: any) {
+export async function postJson(path: string, body: Record<string, unknown>) {
   const res = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

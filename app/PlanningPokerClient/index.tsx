@@ -38,8 +38,7 @@ export function PlanningPokerClient() {
   } = useSession(ROOM_ID, userId, hasUserProfile, userName)
 
   const showConnectionBanner =
-    isOffline ||
-    (connectionStatus !== 'open' && connectionStatus !== 'idle')
+    isOffline || (connectionStatus !== 'open' && connectionStatus !== 'idle')
 
   const connectionMessage = (() => {
     if (isOffline) {
