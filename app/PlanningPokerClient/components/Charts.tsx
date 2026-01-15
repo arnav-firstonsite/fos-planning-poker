@@ -15,6 +15,7 @@ function sessionToChartData(session: SessionData): ChartDatum[] {
     '5': 0,
     '8': 0,
     '13': 0,
+    '21': 0,
   }
 
   for (const participant of session.participants) {

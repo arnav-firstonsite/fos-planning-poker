@@ -39,6 +39,7 @@ const ALLOWED_VOTES: Vote[] = [
   '5',
   '8',
   '13',
+  '21',
   '?',
   'coffee',
 ]
