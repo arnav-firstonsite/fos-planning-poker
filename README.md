@@ -1,5 +1,4 @@
-First Onsite Planning Poker
-===========================
+# First Onsite Planning Poker
 
 Collaborative planning poker application for development teams, built with Next.js, React, TypeScript, and a custom HTTP + WebSocket server. The app supports real-time voting in a shared room with a clean UI optimized for both desktop and mobile.
 
@@ -117,75 +116,71 @@ The HTTP server:
 
 API endpoints (all `POST`):
 
-1. `POST /api/upsert-participant`
+1.  `POST /api/upsert-participant`
 
-   **Body:**
+    **Body:**
 
-       {
-         "roomId": string,
-         "userId": string,
-         "name": string,
-       }
+        {
+          "roomId": string,
+          "userId": string,
+          "name": string,
+        }
 
-   **Behavior:**
+    **Behavior:**
+    - Validates the payload.
+    - Trims `roomId`, `userId`, and `name`.
+    - Adds a new participant or updates an existing participant (by `userId`).
+    - Preserves an existing vote when updating name.
+    - Broadcasts an updated sorted session snapshot to the room.
+    - Returns `204 No Content` on success.
 
-   - Validates the payload.
-   - Trims `roomId`, `userId`, and `name`.
-   - Adds a new participant or updates an existing participant (by `userId`).
-   - Preserves an existing vote when updating name.
-   - Broadcasts an updated sorted session snapshot to the room.
-   - Returns `204 No Content` on success.
+2.  `POST /api/submit-vote`
 
-2. `POST /api/submit-vote`
+    **Body:**
 
-   **Body:**
+        {
+          "roomId": string,
+          "userId": string,
+          "vote": string | null
+        }
 
-       {
-         "roomId": string,
-         "userId": string,
-         "vote": string | null
-       }
+    **Behavior:**
+    - Validates `roomId`, `userId`, and `vote`.
+    - Allowed votes: `0, 1, 2, 3, 5, 8, 13, ?, coffee`, or `null` to clear.
+    - Normalizes IDs and vote strings.
+    - If the user is not an existing participant, the request is a no-op.
+    - Updates the participant’s `vote` field.
+    - Broadcasts an updated sorted session snapshot.
+    - Returns `204 No Content` on success.
 
-   **Behavior:**
+3.  `POST /api/reveal`
 
-   - Validates `roomId`, `userId`, and `vote`.
-   - Allowed votes: `0, 1, 2, 3, 5, 8, 13, ?, coffee`, or `null` to clear.
-   - Normalizes IDs and vote strings.
-   - If the user is not an existing participant, the request is a no-op.
-   - Updates the participant’s `vote` field.
-   - Broadcasts an updated sorted session snapshot.
-   - Returns `204 No Content` on success.
+    **Body:**
 
-3. `POST /api/reveal`
+        {
+          "roomId": string
+        }
 
-   **Body:**
+    **Behavior:**
+    - Validates `roomId`.
+    - Sets `storyStatus` for the room to `"revealed"`.
+    - Broadcasts an updated sorted session snapshot.
+    - Returns `204 No Content` on success.
 
-       {
-         "roomId": string
-       }
+4.  `POST /api/reset`
 
-   **Behavior:**
+    **Body:**
 
-   - Validates `roomId`.
-   - Sets `storyStatus` for the room to `"revealed"`.
-   - Broadcasts an updated sorted session snapshot.
-   - Returns `204 No Content` on success.
+        {
+          "roomId": string
+        }
 
-4. `POST /api/reset`
-
-   **Body:**
-
-       {
-         "roomId": string
-       }
-
-   **Behavior:**
-
-   - Validates `roomId`.
-   - Sets `storyStatus` to `"pending"`.
-   - Sets all participant votes to `null`.
-   - Broadcasts an updated sorted session snapshot.
-   - Returns `204 No Content` on success.
+    **Behavior:**
+    - Validates `roomId`.
+    - Sets `storyStatus` to `"pending"`.
+    - Sets all participant votes to `null`.
+    - Broadcasts an updated sorted session snapshot.
+    - Returns `204 No Content` on success.
 
 The server uses shared helpers:
 

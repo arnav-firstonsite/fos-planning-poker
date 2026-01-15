@@ -15,6 +15,7 @@ function sessionToChartData(session: SessionData): ChartDatum[] {
     '5': 0,
     '8': 0,
     '13': 0,
+    '21': 0,
   }
 
   for (const participant of session.participants) {
@@ -62,11 +63,7 @@ export function Charts({ session }: ChartsProps) {
 
   return (
     <div className="flex w-full flex-row flex-wrap items-center justify-center gap-4 px-4 text-center pt-4">
-      <VoteChart
-        title="Votes"
-        data={data}
-        barColor="var(--color-dark-blue)"
-      />
+      <VoteChart title="Votes" data={data} barColor="var(--color-dark-blue)" />
     </div>
   )
 }
