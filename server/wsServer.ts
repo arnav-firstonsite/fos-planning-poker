@@ -16,6 +16,8 @@ const rooms: RoomsMap = new Map()
 const socketInfo = new Map<WebSocket, SocketInfo>()
 const userConnectionCounts: UserConnectionCounts = new Map()
 
+const HEARTBEAT_INTERVAL_MS = 30000 // 30 seconds heartbeat
+
 type JoinMessage = {
   type: 'join'
   roomId: string
@@ -54,8 +56,34 @@ export function attachWebSocketServer(server: HttpServer) {
     path: '/ws',
   })
 
+  const interval = setInterval(() => {
+    wss.clients.forEach((client) => {
+      const ws = client as WebSocket & { isAlive?: boolean }
+
+      if (ws.isAlive === false) {
+        // This will trigger ws.on('close') and cleanup logic
+        ws.terminate()
+        return
+      }
+
+      ws.isAlive = false
+      ws.ping()
+    })
+  }, HEARTBEAT_INTERVAL_MS)
+
+  wss.on('close', () => {
+    clearInterval(interval)
+  })
+
   wss.on('connection', (socket: WebSocket) => {
-    socket.on('message', (data) => {
+    const ws = socket as WebSocket & { isAlive?: boolean }
+    ws.isAlive = true
+
+    ws.on('pong', () => {
+      ws.isAlive = true
+    })
+
+    ws.on('message', (data) => {
       try {
         const raw = data.toString()
         const msg: ClientMessage = JSON.parse(raw)
@@ -66,9 +94,9 @@ export function attachWebSocketServer(server: HttpServer) {
           if (!roomId || !userId) return
 
           if (!rooms.has(roomId)) rooms.set(roomId, new Set())
-          rooms.get(roomId)!.add(socket)
+          rooms.get(roomId)!.add(ws)
 
-          socketInfo.set(socket, { roomId, userId })
+          socketInfo.set(ws, { roomId, userId })
 
           const userKey = `${roomId}:${userId}`
           const prevCount = userConnectionCounts.get(userKey) ?? 0
@@ -76,8 +104,8 @@ export function attachWebSocketServer(server: HttpServer) {
 
           const sortedSession = getSortedSession(roomId)
 
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.send(
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(
               JSON.stringify({
                 type: 'session',
                 roomId,
@@ -98,21 +126,21 @@ export function attachWebSocketServer(server: HttpServer) {
       }
     })
 
-    socket.on('close', () => {
-      const info = socketInfo.get(socket)
+    ws.on('close', () => {
+      const info = socketInfo.get(ws)
       if (!info) return
 
       const { roomId, userId } = info
 
       const sockets = rooms.get(roomId)
       if (sockets) {
-        sockets.delete(socket)
+        sockets.delete(ws)
         if (sockets.size === 0) {
           rooms.delete(roomId)
         }
       }
 
-      socketInfo.delete(socket)
+      socketInfo.delete(ws)
 
       const userKey = `${roomId}:${userId}`
       const prevCount = userConnectionCounts.get(userKey) ?? 0
@@ -139,7 +167,7 @@ export function attachWebSocketServer(server: HttpServer) {
       }
     })
 
-    socket.on('error', (err) => {
+    ws.on('error', (err) => {
       console.warn('[ws] socket error', {
         error: err instanceof Error ? err.message : String(err),
       })
