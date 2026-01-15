@@ -1,6 +1,16 @@
 // app/planningPokerShared.ts
 
-export type Vote = '0' | '1' | '2' | '3' | '5' | '8' | '13' | '21' | '?' | 'coffee'
+export type Vote =
+  | '0'
+  | '1'
+  | '2'
+  | '3'
+  | '5'
+  | '8'
+  | '13'
+  | '21'
+  | '?'
+  | 'coffee'
 
 export type Participant = {
   id: string
