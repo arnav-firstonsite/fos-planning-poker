@@ -33,7 +33,31 @@ export function PlanningPokerClient() {
     submitVote,
     reveal,
     reset,
-  } = useSession(ROOM_ID, userId, hasUserProfile)
+    connectionStatus,
+    isOffline,
+  } = useSession(ROOM_ID, userId, hasUserProfile, userName)
+
+  const showConnectionBanner =
+    isOffline ||
+    (connectionStatus !== 'open' && connectionStatus !== 'idle')
+
+  const connectionMessage = (() => {
+    if (isOffline) {
+      return 'Offline: changes may not sync. Check the network connection.'
+    }
+
+    if (connectionStatus === 'connecting') {
+      return 'Connecting to server…'
+    }
+    if (connectionStatus === 'reconnecting') {
+      return 'Disconnected from server. Attempting to reconnect…'
+    }
+    if (connectionStatus === 'error') {
+      return 'Connection error. Attempting to reconnect…'
+    }
+
+    return null
+  })()
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-light-grey font-sans">
@@ -41,6 +65,12 @@ export function PlanningPokerClient() {
 
       <main className="flex w-full max-w-3xl flex-1 flex-col items-center justify-start px-4 pt-10 pb-4 md:justify-center md:px-6 md:py-16 md:-mt-6">
         <div className="flex flex-col items-center gap-6 text-center">
+          {showConnectionBanner && connectionMessage && (
+            <div className="w-full rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              {connectionMessage}
+            </div>
+          )}
+
           <div className="w-full max-w-3xl rounded-xl border border-gray-200 bg-white shadow-sm">
             <VoteControls
               selectedVote={currentUser?.vote ?? null}
