@@ -176,9 +176,7 @@ export function attachWebSocketServer(server: HttpServer) {
           try {
             updateSession(roomId, (session) => ({
               ...session,
-              participants: session.participants.filter(
-                (p) => p.id !== userId,
-              ),
+              participants: session.participants.filter((p) => p.id !== userId),
             }))
 
             broadcastSession(roomId)
