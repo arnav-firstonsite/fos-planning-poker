@@ -17,6 +17,10 @@ const socketInfo = new Map<WebSocket, SocketInfo>()
 const userConnectionCounts: UserConnectionCounts = new Map()
 
 const HEARTBEAT_INTERVAL_MS = 30000 // 30 seconds heartbeat
+const DISCONNECT_GRACE_PERIOD_MS = 3000 // 3 seconds before removing user
+
+// Track scheduled removals so they can be cancelled if the user quickly rejoins
+const pendingRemovalTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 type JoinMessage = {
   type: 'join'
@@ -56,6 +60,7 @@ export function attachWebSocketServer(server: HttpServer) {
     path: '/ws',
   })
 
+  // Heartbeat / ping-pong to clean up dead sockets (e.g., mobile dropoffs)
   const interval = setInterval(() => {
     wss.clients.forEach((client) => {
       const ws = client as WebSocket & { isAlive?: boolean }
@@ -93,12 +98,20 @@ export function attachWebSocketServer(server: HttpServer) {
           const userId = msg.userId.trim()
           if (!roomId || !userId) return
 
+          const userKey = `${roomId}:${userId}`
+
+          // If there was a pending removal for this user, cancel it
+          const pending = pendingRemovalTimeouts.get(userKey)
+          if (pending) {
+            clearTimeout(pending)
+            pendingRemovalTimeouts.delete(userKey)
+          }
+
           if (!rooms.has(roomId)) rooms.set(roomId, new Set())
           rooms.get(roomId)!.add(ws)
 
           socketInfo.set(ws, { roomId, userId })
 
-          const userKey = `${roomId}:${userId}`
           const prevCount = userConnectionCounts.get(userKey) ?? 0
           userConnectionCounts.set(userKey, prevCount + 1)
 
@@ -131,6 +144,7 @@ export function attachWebSocketServer(server: HttpServer) {
       if (!info) return
 
       const { roomId, userId } = info
+      const userKey = `${roomId}:${userId}`
 
       const sockets = rooms.get(roomId)
       if (sockets) {
@@ -142,28 +156,47 @@ export function attachWebSocketServer(server: HttpServer) {
 
       socketInfo.delete(ws)
 
-      const userKey = `${roomId}:${userId}`
       const prevCount = userConnectionCounts.get(userKey) ?? 0
+      const nextCount = Math.max(prevCount - 1, 0)
 
-      if (prevCount <= 1) {
+      if (nextCount <= 0) {
+        // No active connections left for this user in this room:
+        // schedule removal after a grace period.
         userConnectionCounts.delete(userKey)
 
-        try {
-          updateSession(roomId, (session) => ({
-            ...session,
-            participants: session.participants.filter((p) => p.id !== userId),
-          }))
+        const timeout = setTimeout(() => {
+          const currentCount = userConnectionCounts.get(userKey) ?? 0
 
-          broadcastSession(roomId)
-        } catch (err) {
-          console.error('[ws] error during disconnect cleanup', {
-            roomId,
-            userId,
-            error: err instanceof Error ? err.message : String(err),
-          })
-        }
+          // If they reconnected in the meantime, do nothing.
+          if (currentCount > 0) {
+            pendingRemovalTimeouts.delete(userKey)
+            return
+          }
+
+          try {
+            updateSession(roomId, (session) => ({
+              ...session,
+              participants: session.participants.filter(
+                (p) => p.id !== userId,
+              ),
+            }))
+
+            broadcastSession(roomId)
+          } catch (err) {
+            console.error('[ws] error during delayed disconnect cleanup', {
+              roomId,
+              userId,
+              error: err instanceof Error ? err.message : String(err),
+            })
+          } finally {
+            pendingRemovalTimeouts.delete(userKey)
+          }
+        }, DISCONNECT_GRACE_PERIOD_MS)
+
+        pendingRemovalTimeouts.set(userKey, timeout)
       } else {
-        userConnectionCounts.set(userKey, prevCount - 1)
+        // Still other active connections (e.g., multiple tabs)
+        userConnectionCounts.set(userKey, nextCount)
       }
     })
 
